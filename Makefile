@@ -56,3 +56,6 @@ $(ISO): $(KERNEL)
 clean:
 	rm -f *.o $(KERNEL) $(ISO)
 	rm -rf $(ISO_DIR)
+
+run: $(ISO)
+	qemu-system-i386 -cdrom $(ISO) -m 128M -no-reboot -no-shutdown

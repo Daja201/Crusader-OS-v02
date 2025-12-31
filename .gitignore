@@ -2,6 +2,7 @@
 *.bin
 *.img
 *.log
+*.iso
 build/
 out/
 
