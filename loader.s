@@ -35,23 +35,21 @@ loader:
     ; nastavíme stack na náš kernel_stack
     mov  esp, kernel_stack + KERNEL_STACK_SIZE
     mov  ebp, esp
-
     ; vytiskneme úvodní zprávu (print_string používá ESI)
     mov  esi, message
+    
     call print_string
-
-    ; zavoláme C entrypoint kernelu
+    
+    ; Provede C Code
     call kmain
 
     ; pokud se kmain vrátí, zastavíme jádro
+
+
 .halt:
     hlt
     jmp .halt
 
-; -------------------------
-; Print routines (VGA text mode 80x25)
-; Vstup: AL = znak (print_char), nebo ESI ukazuje na NUL-terminated string (print_string)
-; -------------------------
 print_char:
     pusha
     mov  ebx, [pos]         ; index znaku
@@ -65,12 +63,14 @@ print_char:
 
 print_string:
     pusha
+
 .print_next:
     lodsb                   ; načte byte z [ESI] do AL a inkrementuje ESI
     test al, al
     jz .print_done
     call print_char
     jmp .print_next
+
 .print_done:
     popa
     ret
@@ -78,7 +78,9 @@ print_string:
 ; -------------------------
 ; Data
 ; -------------------------
+
 section .data
     align 4
+
 message:
     db "System start OK. Btw Bro Welcome to Crusader OS v01.", 0
