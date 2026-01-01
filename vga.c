@@ -1,14 +1,9 @@
 #include "vga.h"
-
-
 #define VGA_ADDR 0xB8000
 static uint16_t *vga = (uint16_t*)VGA_ADDR;
 static uint8_t row = 0;
 static uint8_t col = 0;
 static uint8_t color = 0x0F;
-
-
-
 
 //vga gphcs
 
@@ -16,10 +11,6 @@ void vga_init() {
     for (int i = 0; i < 80*25; i++)
         vga[i] = (uint16_t)' ' | (uint16_t)(color << 8);
 }
-
-
-
-
 
 void print_char(char c) {
     if (c == '\n') {
@@ -49,4 +40,3 @@ void print_hex(uint32_t value) {
     for (int i = 28; i >= 0; i -= 4)
         print_char(hex[(value >> i) & 0xF]);
 }
-
