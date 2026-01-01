@@ -8,5 +8,6 @@ void print_string(const char *s);
 void print_hex(uint32_t value);
 
 void vga_init();
+void vga_backspace();
 
 #endif

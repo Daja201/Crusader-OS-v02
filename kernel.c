@@ -1,5 +1,6 @@
-// #include "vga.h"
+#include "vga.h"
 #include "klog.h"
+#include "bioskbd.h"
 
 //SOME RANDOM C TYPA SHII
 
@@ -24,5 +25,9 @@ void kmain()
     klog("variable r which equals sum_of_three equals: ");
     klog_hex(r);
 
-    for(;;) asm("hlt");
+    klog("Type text (backspace supported). Press Ctrl-C to quit QEMU.");
+    for (;;) {
+        char c = bios_getchar_echo();
+        (void)c;
+    }
 }

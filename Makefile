@@ -11,8 +11,8 @@ LD_FLAGS = -m elf_i386 -T link.ld
 
 # files
 ASM = loader.s
-C_SRC = kernel.c vga.c klog.c
-OBJ = loader.o kernel.o vga.o klog.o
+C_SRC = kernel.c vga.c klog.c bioskbd.c
+OBJ = loader.o kernel.o vga.o klog.o bioskbd.o
 KERNEL = kernel.elf
 ISO_DIR = iso
 GRUB_DIR = $(ISO_DIR)/boot/grub
@@ -37,6 +37,9 @@ vga.o: vga.c
 
 klog.o: klog.c
 	$(CC) $(CFLAGS) klog.c -o klog.o
+
+bioskbd.o: bioskbd.c bioskbd.h vga.h
+	$(CC) $(CFLAGS) bioskbd.c -o bioskbd.o
 
 # link kernel
 kernel.elf: $(OBJ)

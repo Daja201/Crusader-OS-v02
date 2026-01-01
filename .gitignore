@@ -3,6 +3,7 @@
 *.img
 *.log
 *.iso
-build/
-out/
+iso/
+
+
 

@@ -40,3 +40,18 @@ void print_hex(uint32_t value) {
     for (int i = 28; i >= 0; i -= 4)
         print_char(hex[(value >> i) & 0xF]);
 }
+
+void vga_backspace() {
+    if (row == 0 && col == 0) return;
+    if (col == 0) {
+        if (row > 0) {
+            row--;
+            col = 79;
+        } else {
+            col = 0;
+        }
+    } else {
+        col--;
+    }
+    vga[row * 80 + col] = (uint16_t)' ' | (uint16_t)(color << 8);
+}
