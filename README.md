@@ -1,3 +1,4 @@
+#Crusader OS
 A hobby operating system made based on a .pdf book: 
     The little book about OS development
     Erik Helin, Adam Renberg
@@ -6,10 +7,10 @@ And many other sources like my iold Crusader-OS project.
 
 Functions:
 - [x] C support
-- [ ] terminal
+- [x] terminal
 - [ ] custom filesystem
 - [ ] usb support
-- [ ] keyboard support
+- [x] keyboard support
 - [ ] sound support
 - [ ] txt editors
 - [ ] apps
@@ -19,3 +20,7 @@ Functions:
 - [ ] some games 
 - [ ] GUI
 - [ ] CD-DVD music/movies support
+
+
+Random facts for developers:
+    →klog is like printf and klog with vga are both for writing characters onto screen
