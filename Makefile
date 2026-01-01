@@ -6,7 +6,7 @@ GENISO = genisoimage
 
 # flags
 NASM_FLAGS = -f elf32
-CFLAGS = -m32 -ffreestanding -c
+CFLAGS = -m32 -ffreestanding -c -fno-builtin
 LD_FLAGS = -m elf_i386 -T link.ld
 
 # files

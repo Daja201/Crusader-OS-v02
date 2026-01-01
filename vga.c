@@ -10,6 +10,7 @@ static uint8_t color = 0x0F;
 void vga_init() {
     for (int i = 0; i < 80*25; i++)
         vga[i] = (uint16_t)' ' | (uint16_t)(color << 8);
+    vga_center();
 }
 
 void print_char(char c) {
@@ -54,4 +55,32 @@ void vga_backspace() {
         col--;
     }
     vga[row * 80 + col] = (uint16_t)' ' | (uint16_t)(color << 8);
+}
+
+void vga_center() {
+    const int W = 80;
+    const int H = 25;
+    int first_row = 0;
+    int delta = first_row - row;
+    uint16_t tmp[W * H];
+    for (int r = 0; r < H; r++)
+        for (int c = 0; c < W; c++)
+            tmp[r * W + c] = vga[r * W + c];
+
+    /* clear screen */
+    for (int i = 0; i < W * H; i++)
+        vga[i] = (uint16_t)' ' | (uint16_t)(color << 8);
+
+    for (int r = 0; r < H; r++) {
+        int src_r = r - delta;
+        for (int c = 0; c < W; c++) {
+            if (src_r >= 0 && src_r < H)
+                vga[r * W + c] = tmp[src_r * W + c];
+            else
+                vga[r * W + c] = (uint16_t)' ' | (uint16_t)(color << 8);
+        }
+    }
+
+    row = first_row;
+    if (col >= W) col = 0;
 }
