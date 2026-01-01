@@ -9,7 +9,7 @@ Functions:
 - [ ] terminal
 - [ ] custom filesystem
 - [ ] usb support
-- [ ] keyboard support
+- [x] keyboard support
 - [ ] sound support
 - [ ] txt editors
 - [ ] apps
