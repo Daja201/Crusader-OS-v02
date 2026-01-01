@@ -11,8 +11,8 @@ LD_FLAGS = -m elf_i386 -T link.ld
 
 # files
 ASM = loader.s
-C_SRC = kernel.c
-OBJ = loader.o kernel.o
+C_SRC = kernel.c vga.c klog.c
+OBJ = loader.o kernel.o vga.o klog.o
 KERNEL = kernel.elf
 ISO_DIR = iso
 GRUB_DIR = $(ISO_DIR)/boot/grub
@@ -23,19 +23,25 @@ MENU = ./menu.lst
 # main target
 all: $(ISO)
 
-# compile ass-embly
+# compile assembly
 loader.o: loader.s
 	$(NASM) $(NASM_FLAGS) loader.s -o loader.o
 
-# compile C
+# compile C sources
 kernel.o: kernel.c
 	$(CC) $(CFLAGS) kernel.c -o kernel.o
+
+vga.o: vga.c
+	$(CC) $(CFLAGS) vga.c -o vga.o
+
+klog.o: klog.c
+	$(CC) $(CFLAGS) klog.c -o klog.o
 
 # link kernel
 kernel.elf: $(OBJ)
 	$(LD) $(LD_FLAGS) $(OBJ) -o $(KERNEL)
 
-# build suiiiii (iso)
+# build ISO
 $(ISO): $(KERNEL)
 	mkdir -p $(GRUB_DIR)
 	cp $(STAGE2) $(GRUB_DIR)/
@@ -56,6 +62,3 @@ $(ISO): $(KERNEL)
 clean:
 	rm -f *.o $(KERNEL) $(ISO)
 	rm -rf $(ISO_DIR)
-
-run: $(ISO)
-	qemu-system-i386 -cdrom $(ISO) -m 128M -no-reboot -no-shutdown

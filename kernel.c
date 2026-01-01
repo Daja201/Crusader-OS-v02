@@ -1,3 +1,6 @@
+#include "vga.h"
+#include "klog.h"
+
 int sum_of_three(int a, int b, int c)
 {
     return a + b + c;
@@ -5,6 +8,14 @@ int sum_of_three(int a, int b, int c)
 
 void kmain()
 {
+    vga_init();
+
+    klog("Kernel start OK");
+
     int r = sum_of_three(1, 2, 3);
-    // tady už můžeš dělat normální C věci
+
+    klog("Výsledek sum_of_three =");
+    klog_hex(r);
+
+    for(;;) asm("hlt");
 }
