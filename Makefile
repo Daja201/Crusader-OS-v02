@@ -20,6 +20,7 @@ STAGE2 = ./stage2_eltorito
 ISO = os.iso
 MENU = ./menu.lst
 
+
 # main target
 all: $(ISO)
 
@@ -47,6 +48,7 @@ $(ISO): $(KERNEL)
 	cp $(STAGE2) $(GRUB_DIR)/
 	cp $(MENU) $(GRUB_DIR)/
 	cp $(KERNEL) $(ISO_DIR)/boot/
+# mkdir -p iso/modules
 
 	$(GENISO) -R \
 	 -b boot/grub/$(notdir $(STAGE2)) \
