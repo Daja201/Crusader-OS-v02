@@ -13,11 +13,9 @@ void cmd_help(int argc, char** argv) {
     }
 }
 
+//YAII FINALLY JUPMING COW (Thanks to Lujza <3 for whole idea)
+
 void cmd_cow(int argc, char** argv) {
-    /* Smooth vertical jumping cow:
-       - interpolate many steps between top and bottom
-       - slower, smoother motion (~3s each direction)
-       - clear screen each frame to keep it clean */
     const char *cow[] = {
         "          (__) ",
         "          (oo) ",
@@ -38,19 +36,16 @@ void cmd_cow(int argc, char** argv) {
     int x = (screen_w - cow_width) / 2;
     if (x < 0) x = 0;
     int top_y = 1;
-    int bottom_y = screen_h - cow_lines; /* bottom so cow's last line is row 24 */
+    int bottom_y = screen_h - cow_lines;
 
-    const int total_ms = 6000;          /* round-trip ~6s */
-    const int frames_per_jump = 40;     /* 40 frames per direction -> smooth */
-    const int ms_per_frame = (total_ms / 2) / frames_per_jump; /* ~75ms */
-
-    /* busy-wait delay; adjust multiplier if timing is off in your VM */
+    const int total_ms = 6000;     
+    const int frames_per_jump = 40;    
+    const int ms_per_frame = (total_ms / 2) / frames_per_jump; 
     void busy_ms(int ms) {
         volatile unsigned int iter = 8000 * ms;
         for (volatile unsigned int i = 0; i < iter; i++) asm volatile ("nop");
     }
 
-    /* top -> bottom */
     for (int step = 0; step <= frames_per_jump; step++) {
         int y = (top_y * (frames_per_jump - step) + bottom_y * step + frames_per_jump/2) / frames_per_jump;
         vga_init();
@@ -63,7 +58,6 @@ void cmd_cow(int argc, char** argv) {
         busy_ms(ms_per_frame);
     }
 
-    /* bottom -> top */
     for (int step = frames_per_jump; step >= 0; step--) {
         int y = (top_y * (frames_per_jump - step) + bottom_y * step + frames_per_jump/2) / frames_per_jump;
         vga_init();
