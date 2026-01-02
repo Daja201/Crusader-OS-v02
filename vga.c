@@ -13,19 +13,40 @@ void vga_init() {
     vga_center();
 }
 
+/* scroll up by n lines (n > 0) */
+void vga_scroll_lines(int n) {
+    const int W = 80;
+    const int H = 25;
+    if (n <= 0) return;
+    for (int r = 0; r < H; r++) {
+        int src = r + n;
+        for (int c = 0; c < W; c++) {
+            if (src < H)
+                vga[r * W + c] = vga[src * W + c];
+            else
+                vga[r * W + c] = (uint16_t)' ' | (uint16_t)(color << 8);
+        }
+    }
+}
+
 void print_char(char c) {
+    const int H = 25;
     if (c == '\n') {
         row++;
         col = 0;
-        return;
+    } else {
+        vga[row * 80 + col] = (uint16_t)c | (uint16_t)(color << 8);
+        col++;
+        if (col >= 80) {
+            col = 0;
+            row++;
+        }
     }
 
-    vga[row * 80 + col] = (uint16_t)c | (uint16_t)(color << 8);
-
-    col++;
-    if (col >= 80) {
-        col = 0;
-        row++;
+    if (row >= H) {
+        int delta = row - (H - 1);
+        vga_scroll_lines(delta);
+        row = H - 1;
     }
 }
 
@@ -55,6 +76,15 @@ void vga_backspace() {
         col--;
     }
     vga[row * 80 + col] = (uint16_t)' ' | (uint16_t)(color << 8);
+}
+
+/* scroll so current row is at the bottom (row 24) if it's beyond it */
+void vga_scroll_to_bottom() {
+    const int H = 25;
+    if (row <= H - 1) return;
+    int delta = row - (H - 1);
+    vga_scroll_lines(delta);
+    row = H - 1;
 }
 
 void vga_center() {

@@ -11,12 +11,11 @@
 - runs well in qemu-i386
 - hasn't been tested on real HW yet
 - use klog for screen printing basic text
-- 
 
 ## Dependencies:
 - Linux debian:
 - **sudo apt install make build-essentials gcc-multilib binutils nasm grub-pc-bin xorriso qemu-system-i386** 
-- use// **qemu-system-i386 -cdrom os.iso -m 128M -no-reboot -no-shutdown** for running
+- use **qemu-system-i386 -cdrom os.iso -m 128M -no-reboot -no-shutdown** for running
 
 ## Functions:
 - [x] Jumping cow uwu
