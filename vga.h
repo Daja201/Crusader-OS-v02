@@ -10,5 +10,6 @@ void print_hex(uint32_t value);
 void vga_init();
 void vga_backspace();
 void vga_center();
+void vga_scroll_to_bottom();
 
 #endif

@@ -34,6 +34,8 @@ void terminal_key(char c) {
         cmd_buf[cmd_len] = 0;
         execute_command(cmd_buf);
         cmd_len = 0;
+        /* ensure the latest output and prompt stay visible at the bottom */
+        vga_scroll_to_bottom();
         klog("comm> ");
         return;
     }

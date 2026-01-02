@@ -31,8 +31,8 @@ char bios_getchar_echo(void)
         if (sc < sizeof(map)) c = map[sc];
         if (c == 0) continue;
         if (c == '\b') {
-            vga_backspace();
-            continue; /* don't return on backspace */
+            /* return backspace to caller so terminal can update its buffer and perform backspace */
+            return '\b';
         }
         /* echo and return */
         print_char(c);
