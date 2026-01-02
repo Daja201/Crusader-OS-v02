@@ -1,5 +1,6 @@
 #include "commands.h"
 #include "terminal.h"
+#include "vga.h"
 #include <string.h>
 
 // pure commands inside lore lol <3
@@ -13,8 +14,10 @@ void cmd_help(int argc, char** argv) {
 }
 
 void cmd_cow(int argc, char** argv) {
-    /* Jumping cow: alternate between top-centered and bottom-centered
-       positions for ~5 seconds, clearing screen between frames. */
+    /* Smooth vertical jumping cow:
+       - interpolate many steps between top and bottom
+       - slower, smoother motion (~3s each direction)
+       - clear screen each frame to keep it clean */
     const char *cow[] = {
         "          (__) ",
         "          (oo) ",
@@ -34,23 +37,36 @@ void cmd_cow(int argc, char** argv) {
     const int screen_h = 25;
     int x = (screen_w - cow_width) / 2;
     if (x < 0) x = 0;
-    int top_y = (screen_h - cow_lines) / 4;    /* upper quarter (centered near top) */
-    int bottom_y = (screen_h - cow_lines) * 3 / 4; /* lower quarter (centered near bottom) */
+    int top_y = 1;
+    int bottom_y = screen_h - cow_lines; /* bottom so cow's last line is row 24 */
 
-    const int total_ms = 5000;
-    const int toggles = 20; /* number of frames (top/bottom alternations) */
-    const int ms_per_frame = total_ms / toggles;
+    const int total_ms = 6000;          /* round-trip ~6s */
+    const int frames_per_jump = 40;     /* 40 frames per direction -> smooth */
+    const int ms_per_frame = (total_ms / 2) / frames_per_jump; /* ~75ms */
 
-    /* busy-wait delay */
+    /* busy-wait delay; adjust multiplier if timing is off in your VM */
     void busy_ms(int ms) {
-        volatile unsigned int iter = 2500 * ms;
+        volatile unsigned int iter = 8000 * ms;
         for (volatile unsigned int i = 0; i < iter; i++) asm volatile ("nop");
     }
 
-    for (int t = 0; t < toggles; t++) {
-        int y = (t % 2 == 0) ? top_y : bottom_y;
-        vga_init(); /* fully clear screen */
-        /* move down y lines */
+    /* top -> bottom */
+    for (int step = 0; step <= frames_per_jump; step++) {
+        int y = (top_y * (frames_per_jump - step) + bottom_y * step + frames_per_jump/2) / frames_per_jump;
+        vga_init();
+        for (int r = 0; r < y; r++) print_string("\n");
+        for (int i = 0; i < cow_lines; i++) {
+            for (int s = 0; s < x; s++) print_char(' ');
+            print_string(cow[i]);
+            print_string("\n");
+        }
+        busy_ms(ms_per_frame);
+    }
+
+    /* bottom -> top */
+    for (int step = frames_per_jump; step >= 0; step--) {
+        int y = (top_y * (frames_per_jump - step) + bottom_y * step + frames_per_jump/2) / frames_per_jump;
+        vga_init();
         for (int r = 0; r < y; r++) print_string("\n");
         for (int i = 0; i < cow_lines; i++) {
             for (int s = 0; s < x; s++) print_char(' ');
