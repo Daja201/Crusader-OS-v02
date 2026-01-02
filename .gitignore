@@ -1,9 +1,5 @@
 *.o
 *.bin
-*.img
-*.log
+*.elf
 *.iso
 iso/
-
-
-

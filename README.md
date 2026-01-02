@@ -6,6 +6,7 @@ A hobby operating system made based on a .pdf book:
 And many other sources like my iold Crusader-OS project.
 
 Functions:
+- [x] Jumping cow uwu
 - [x] C support
 - [x] terminal
 - [ ] custom filesystem

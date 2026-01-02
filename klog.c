@@ -10,7 +10,6 @@ void klog(const char* msg)
 }
 
 //print for variables
-
 void klog_hex(uint32_t val)
 {
     print_string("0x");

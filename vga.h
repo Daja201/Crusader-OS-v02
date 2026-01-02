@@ -9,5 +9,6 @@ void print_hex(uint32_t value);
 
 void vga_init();
 void vga_backspace();
+void vga_center();
 
 #endif

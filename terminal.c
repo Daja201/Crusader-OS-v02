@@ -1,5 +1,6 @@
 #include "terminal.h"
 #include "commands.h"
+#include "vga.h"
 #include <string.h>
 static char cmd_buf[CMD_BUF_SIZE];
 static int cmd_len = 0;
@@ -40,7 +41,7 @@ void terminal_key(char c) {
     if (c == '\b') {
         if (cmd_len > 0) {
             cmd_len--;
-            klog("\b \b");
+            vga_backspace();
         }
         return;
     }
