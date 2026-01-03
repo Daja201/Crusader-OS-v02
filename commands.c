@@ -4,15 +4,15 @@
 #include <string.h>
 #include <stdio.h>
 #include <cpuid.h>
+#include "reboot.h"
 
 // pure commands inside lore lol <3
 
 void cmd_help(int argc, char** argv) {
-    klog("Available commands:\n");
-    for (int i = 0; i < command_count; i++) {
-        klog(commands[i].name);
-        klog("\n");
-    }
+    klog("Welcome to Crusader OS makde by David Zapletal");
+    klog("Source code shoould be available on: https://github.com/Daja201/Crusader-OS-v02");
+    klog("Feel free to copy and change source code for yourself.");
+    klog("Run command: 'lib' for info about commands and whole system.");
 }
 
 void busy_ms(int ms) {
@@ -78,7 +78,7 @@ void cmd_cow(int argc, char** argv) {
         }
         
     }
-    return 0;
+    return;
 }
 
 //
@@ -108,7 +108,7 @@ void cmd_clear(int argc, char** argv) {
 
 void cmd_reboot(int argc, char** argv) {
     klog("reboot in process\n");
-    //pls add reboot code ):
+    reboot_triple_fault();
 }
 
 // comms table for functions link to comms:

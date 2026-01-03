@@ -12,6 +12,7 @@ int sum_of_three(int a, int b, int c)
 // C FUNC FOR PRINT
 //For print call klog
 
+
 void kmain()
 {
     vga_init();
