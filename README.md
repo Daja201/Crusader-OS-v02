@@ -33,3 +33,8 @@
 - [ ] some games 
 - [ ] GUI
 - [ ] CD-DVD music/movies support
+
+## Commands inside OS
+- cow → jumping cow
+- cat → just cat
+- help → help yourself lol :3
