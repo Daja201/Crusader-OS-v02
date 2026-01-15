@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <cpuid.h>
 #include "reboot.h"
+#include "diskinfo.h"
+#include "runtest.h"
 
 // pure commands inside lore lol <3
 
@@ -83,8 +85,6 @@ void cmd_cow(int argc, char** argv) {
 
 //
 
-
-
 void cmd_cat(int argc, char** argv) {
     const char *cat =
 "    /\\___/\\   \n"
@@ -101,6 +101,10 @@ void cmd_cat(int argc, char** argv) {
     print_string(cat);
 }
 
+void cmd_ld(int argc, char** argv) {
+    detect_disk();
+    identify_disk();
+}
 
 void cmd_clear(int argc, char** argv) {
     vga_init();
@@ -111,13 +115,19 @@ void cmd_reboot(int argc, char** argv) {
     reboot_triple_fault();
 }
 
+void cmd_runtest(int argc, char** argv) {
+    klog("Trying runtest...\n");
+    runtest_program();
+}
 // comms table for functions link to comms:
 command_t commands[] = {
     {"help", cmd_help},
     {"clear", cmd_clear},
     {"reboot", cmd_reboot},
     {"cow", cmd_cow},
-    {"cat", cmd_cat}
+    {"cat", cmd_cat},
+    {"ld", cmd_ld},
+    {"rt", cmd_runtest}
 };
 //
 int command_count = sizeof(commands)/sizeof(command_t);
