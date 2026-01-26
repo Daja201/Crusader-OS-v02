@@ -7,6 +7,7 @@
 #include "reboot.h"
 #include "diskinfo.h"
 #include "runtest.h"
+#include "fs.h"
 
 // pure commands inside lore lol <3
 
@@ -119,6 +120,67 @@ void cmd_runtest(int argc, char** argv) {
     klog("Trying runtest...\n");
     runtest_program();
 }
+
+void cmd_read(int argc, char** argv) {
+    if (argc < 2) {
+        klog("Usage: read <filename>");
+        return;
+    }
+    
+    // Get root directory inode
+    inode_t root;
+    read_inode(0, &root);
+    
+    // Look up file in root directory
+    int inode_num = dir_lookup(&root, argv[1]);
+    if (inode_num < 0) {
+        klog("Error: File not found");
+        return;
+    }
+    
+    // Read the file
+    uint8_t buf[512];
+    int bytes_read = fs_read(inode_num, buf, 512);
+    
+    if (bytes_read <= 0) {
+        klog("Error: Could not read file");
+        return;
+    }
+    
+    // Print the file contents
+    for (int i = 0; i < bytes_read; i++) {
+        if (buf[i] == '\0') break;
+        char ch[2] = {buf[i], '\0'};
+        print_string(ch);
+    }
+    print_string("\n");
+}
+
+void cmd_ls(int argc, char** argv) {
+    inode_t root;
+    read_inode(0, &root);
+    
+    uint8_t buf[512];
+    block_read((uint32_t)root.direct[0], buf);
+    
+    struct dirent {
+        uint32_t inode;
+        char name[28];
+    };
+    
+    struct dirent* entries = (struct dirent*)buf;
+    int entry_count = 512 / sizeof(struct dirent);
+    
+    klog("Files in root directory:");
+    for (int i = 0; i < entry_count; i++) {
+        if (entries[i].inode != 0) {
+            print_string("  ");
+            print_string(entries[i].name);
+            print_string("\n");
+        }
+    }
+}
+
 // comms table for functions link to comms:
 command_t commands[] = {
     {"help", cmd_help},
@@ -127,7 +189,9 @@ command_t commands[] = {
     {"cow", cmd_cow},
     {"cat", cmd_cat},
     {"ld", cmd_ld},
-    {"rt", cmd_runtest}
+    {"rt", cmd_runtest},
+    {"read", cmd_read},
+    {"ls", cmd_ls}
 };
 //
 int command_count = sizeof(commands)/sizeof(command_t);

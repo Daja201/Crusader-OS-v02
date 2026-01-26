@@ -205,14 +205,58 @@ int alloc_inode() {
     return -1;
 }
 
-int dir_lookup(inode_t* dir, const char* name); // vrátí inode
-int dir_add(inode_t* dir, const char* name, uint32_t inode);
-
 // dir entry structure
 struct dirent {
     uint32_t inode;
     char name[28];
 };
+
+int dir_lookup(inode_t* dir, const char* name) {
+    if (dir->type != 2) return -1; // not a directory
+    
+    uint8_t buf[SECTOR_SIZE];
+    block_read((uint32_t)dir->direct[0], buf);
+    
+    struct dirent* entries = (struct dirent*)buf;
+    int entry_count = SECTOR_SIZE / sizeof(struct dirent);
+    
+    for (int i = 0; i < entry_count; i++) {
+        if (entries[i].inode == 0) continue;
+        if (strcmp(entries[i].name, name) == 0) {
+            return entries[i].inode;
+        }
+    }
+    
+    return -1;
+}
+
+int dir_add(inode_t* dir, const char* name, uint32_t inode) {
+    if (dir->type != 2) return -1; // not a directory
+    
+    uint8_t buf[SECTOR_SIZE];
+    block_read((uint32_t)dir->direct[0], buf);
+    
+    struct dirent* entries = (struct dirent*)buf;
+    int entry_count = SECTOR_SIZE / sizeof(struct dirent);
+    
+    // find empty slot
+    for (int i = 0; i < entry_count; i++) {
+        if (entries[i].inode == 0) {
+            entries[i].inode = inode;
+            // simple copy instead of strncpy
+            int j = 0;
+            while (name[j] && j < 27) {
+                entries[i].name[j] = name[j];
+                j++;
+            }
+            entries[i].name[j] = '\0';
+            block_write((uint32_t)dir->direct[0], buf);
+            return 0;
+        }
+    }
+    
+    return -1; // directory full
+}
 
 // normal fs files writing
 //whole srite/read/delete idk whatever function
@@ -241,6 +285,12 @@ uint32_t fs_create_file(const char* path) {
 
     node.direct[0] = b;
     write_inode(idx, &node);
+    
+    // Add file to root directory
+    inode_t root;
+    read_inode(0, &root);
+    dir_add(&root, path, (uint32_t)idx);
+    
     return (uint32_t)idx;
 }
 

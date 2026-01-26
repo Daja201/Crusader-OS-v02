@@ -14,4 +14,7 @@ typedef struct {
 extern command_t commands[];
 extern int command_count;
 
+void cmd_read(int argc, char** argv);
+void cmd_ls(int argc, char** argv);
+
 #endif
