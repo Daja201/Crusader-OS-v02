@@ -269,7 +269,6 @@ int fs_delete_file(const char* path);
 uint32_t fs_create_file(const char* path) {
     int idx = alloc_inode();
     if (idx < 0) return (uint32_t)-1;
-
     inode_t node;
     memset(&node, 0, sizeof(node));
     node.type = 1; // regular file

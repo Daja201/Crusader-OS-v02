@@ -8,6 +8,7 @@
 #include "diskinfo.h"
 #include "runtest.h"
 #include "fs.h"
+#include "library.h"
 
 // pure commands inside lore lol <3
 
@@ -121,6 +122,11 @@ void cmd_runtest(int argc, char** argv) {
     runtest_program();
 }
 
+void cmd_lib(int argc, char** argv) {
+    klog("Welcome to library of Crusader OS:\n");
+    library();
+}
+
 void cmd_read(int argc, char** argv) {
     if (argc < 2) {
         klog("Usage: read <filename>");
@@ -191,7 +197,8 @@ command_t commands[] = {
     {"ld", cmd_ld},
     {"rt", cmd_runtest},
     {"read", cmd_read},
-    {"ls", cmd_ls}
+    {"ls", cmd_ls},
+    {"lib", cmd_lib}
 };
 //
 int command_count = sizeof(commands)/sizeof(command_t);

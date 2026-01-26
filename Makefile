@@ -11,8 +11,8 @@ LD_FLAGS = -m elf_i386 -T link.ld
 
 # files
 ASM = loader.s
-C_SRC = kernel.c vga.c klog.c bioskbd.c terminal.c commands.c string.c reboot.c fs.c diskinfo.c runtest.c
-OBJ = loader.o kernel.o vga.o klog.o bioskbd.o terminal.o commands.o string.o reboot.o fs.o diskinfo.o runtest.o
+C_SRC = kernel.c vga.c klog.c bioskbd.c terminal.c commands.c string.c reboot.c fs.c diskinfo.c runtest.c library.c
+OBJ = loader.o kernel.o vga.o klog.o bioskbd.o terminal.o commands.o string.o reboot.o fs.o diskinfo.o runtest.o library.o
 ISO_DIR = iso
 GRUB_DIR = $(ISO_DIR)/boot/grub
 STAGE2 = ./stage2_eltorito
