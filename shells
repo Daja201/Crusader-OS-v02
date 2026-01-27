@@ -1,0 +1,10 @@
+#
+#	qemu-system-i386 -cdrom $(ISO) -m 128M -no-reboot -no-shutdown
+#
+
+
+LBA 0   superblock
+LBA 1   block bitmap
+LBA 2   inode bitmap
+LBA 3–10 inode table
+LBA 11+ data blocks
