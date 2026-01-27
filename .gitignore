@@ -2,4 +2,5 @@
 *.bin
 *.elf
 *.iso
+*.img
 iso/
