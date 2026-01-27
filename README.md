@@ -53,7 +53,7 @@
 | End of FS | Reserved / padding | Reserved space for future expansion                                                   |
 
 
-- at this moment, FS has fixed size of 32MB
+- FS has no more fixed size so you can use whatever sized disk.img you want
 - i use **dd if=/dev/zero of=disk.img bs=1M count=32 status=progress** for recleaning drive
 - and **hexdump -C disk.img | less** for seeing inside content
 
