@@ -1,3 +1,5 @@
+//NOT ANYMORE FIXED SIZE i hope
+
 #include "fs.h"
 #include <stdint.h>
 #include <string.h>
