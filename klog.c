@@ -62,6 +62,31 @@ void klogf(const char *fmt, ...) {
                 klog(out);
                 break;
             }
+            case 'l': {
+                //PART OF BIGGER DRIVE SUPPORT
+                if (fmt[i+1] == 'l' && fmt[i+2] == 'u') {
+                    unsigned long long v = va_arg(args, unsigned long long);
+    
+                    int idx = 0;
+                    if (v == 0) {
+                        buf[idx++] = '0';
+                    } else {
+                        unsigned long long div = 1;
+                        while (div <= v / 10) div *= 10;
+                        while (div > 0) {
+                            buf[idx++] = '0' + (v / div);
+                            v %= div;
+                            div /= 10;
+                        }
+                    }
+                    buf[idx] = '\0';
+                    klog(buf);
+                    i += 2; 
+                } else {
+                    klog("<?>");
+                }
+                break;
+            }
             case '%':
                 klog("%");
                 break;

@@ -1,3 +1,5 @@
+//SOLVE ERROR WHEN USING >32 MB drives i guess, 3rd klog in output
+
 #include <stdint.h>
 #include "klog.h"
 #include "fs.h"
@@ -65,7 +67,7 @@ void identify_disk() {
     if (sectors == 0) {
         klog("size: unknown (IDENTIFY returned 0)");
         klog("FS superblock total_blocks:");
-        klogf("%d", (int)g_superblock.total_blocks);
+        klogf("%llu", (unsigned long long)g_superblock.total_blocks);
     } else {
         // print sectors
         char tmp[32]; int tp = 0;
@@ -82,10 +84,10 @@ void identify_disk() {
         tp = 0; tv = bytes; if (tv == 0) tmp[tp++] = '0';
         while (tv) { tmp[tp++] = '0' + (tv % 10); tv /= 10; }
         for (int i = 0; i < tp; ++i) buf[i] = tmp[tp-1-i]; buf[tp] = '\0';
-        klog("size (bytes):"); klog(buf);
+        klog("size (bytes) /1000000 for MB's:"); klog(buf);   
 
         klog("FS superblock total_blocks:");
-        klogf("%d", (int)g_superblock.total_blocks);
+        klogf("%llu", (unsigned long long)g_superblock.total_blocks);
     }
 
 }
