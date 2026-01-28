@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <string.h>
 #include "string.h"
-
 //
 #define BLOCK_SIZE 512
 #define ATA_PRIMARY_DATA   0x1F0
@@ -230,9 +229,8 @@ void init_fs() {
 //    // tries 65536 sectors if identifies error / nothing
 //        drive_sectors = 65536;
 //    }
-    uint32_t max_blocks = BLOCK_BITMAP_MAX_SIZE * 8;
-    uint32_t total_blocks = drive_sectors;
-    //if (total_blocks > max_blocks) total_blocks = max_blocks;
+    uint64_t total_blocks = drive_sectors;
+    // Note: bitmap size is dynamically allocated, no artificial limit
 
     // compute effective bitmap bytes and sector counts
     block_bitmap_bytes = (total_blocks + 7) / 8;
@@ -284,7 +282,6 @@ void init_fs() {
 
         create_root();
     } else {
-        if (g_superblock.total_blocks > max_blocks) g_superblock.total_blocks = max_blocks;
         block_bitmap_bytes = (g_superblock.total_blocks + 7) / 8;
         if (block_bitmap_bytes > BLOCK_BITMAP_MAX_SIZE) block_bitmap_bytes = BLOCK_BITMAP_MAX_SIZE;
         block_bitmap_sectors = (block_bitmap_bytes + SECTOR_SIZE - 1) / SECTOR_SIZE;
@@ -311,11 +308,9 @@ void init_fs() {
                     v = v * 10 + (tmp[ii] - '0');
                 }
                 if (v > 0) {
-                    if (v > max_blocks) v = max_blocks;
                     g_superblock.total_blocks = v;
                     // recompute bitmap bytes/sectors based on persisted value
                     block_bitmap_bytes = (g_superblock.total_blocks + 7) / 8;
-                    if (block_bitmap_bytes > BLOCK_BITMAP_MAX_SIZE) block_bitmap_bytes = BLOCK_BITMAP_MAX_SIZE;
                     block_bitmap_sectors = (block_bitmap_bytes + SECTOR_SIZE - 1) / SECTOR_SIZE;
                     // rewrite superblock to reflect applied size
                     for (i = 0; i < SECTOR_SIZE; ++i) buf[i] = 0;

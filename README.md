@@ -57,3 +57,7 @@
 - i use **dd if=/dev/zero of=disk.img bs=1M count=32 status=progress** for recleaning drive
 - and **hexdump -C disk.img | less** for seeing inside content
 
+##MY MAKEFILE SUPPORT
+- use **make a** to do every step like make clean, format drive and make again
+- you can normally use **make clean**, **make**, and **make run**
+- you can also use **make dd4**, **make dd32** or **make dd128** for formating drive with **4**, **32** or **128** MB's

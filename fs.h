@@ -25,7 +25,7 @@ void create_root(void);
 typedef struct {
     uint32_t magic;
     uint32_t block_size;
-    uint32_t total_blocks;
+    uint64_t total_blocks;
     uint32_t inode_count;
     uint32_t bitmap_start;
     uint32_t inode_start;

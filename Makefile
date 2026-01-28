@@ -73,3 +73,19 @@ clean:
 # run
 run:
 	qemu-system-i386 -kernel kernel.elf -hda disk.img -m 512M -serial stdio
+
+#tryna make auto dd
+dd32:
+	dd if=/dev/zero of=disk.img bs=1M count=32 status=progress
+dd128:
+	dd if=/dev/zero of=disk.img bs=1M count=128 status=progress
+dd4:
+	dd if=/dev/zero of=disk.img bs=1M count=4 status=progress
+
+#WHOLE MAKE CYCLE
+a:
+	make clean
+	make dd128
+	make 
+	make run
+	echo (((((MAKE HAS DONE EVERYTHING FOR YOU, DRIVE SIZE: 128MB)))))
