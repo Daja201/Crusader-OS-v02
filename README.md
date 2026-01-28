@@ -37,10 +37,13 @@
 - [ ] CD-DVD music/movies support
 
 ## Commands inside OS
+- **lib** to get more commands and info
 - cow → jumping cow
 - cat → just cat
 - help → help yourself lol :3
-- runtest → kinda interesting test thing for functionality testing of new functions etc...
+- rt → kinda interesting test thing for functionality testing of new functions etc...
+- reboot → makes triple fault to CPU
+- ld → info about drive
 
 ## Filesystem
 | Offset    | Component          | Description                                                                           |
@@ -52,12 +55,11 @@
 | `0x1600`  | Data Blocks        | Stores actual file content                                                            |
 | End of FS | Reserved / padding | Reserved space for future expansion                                                   |
 
-
 - FS has no more fixed size so you can use whatever sized disk.img you want
 - i use **dd if=/dev/zero of=disk.img bs=1M count=32 status=progress** for recleaning drive
 - and **hexdump -C disk.img | less** for seeing inside content
 
-##MY MAKEFILE SUPPORT
+## MY MAKEFILE SUPPORT
 - use **make a** to do every step like make clean, format drive and make again
 - you can normally use **make clean**, **make**, and **make run**
-- you can also use **make dd4**, **make dd32** or **make dd128** for formating drive with **4**, **32** or **128** MB's
+- you can also use **make dd4**, **make dd32** or **make dd128** for formating drive with **4**, **32** or **128** MB's 
