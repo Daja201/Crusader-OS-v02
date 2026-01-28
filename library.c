@@ -14,7 +14,7 @@ void library(void){
     klog("ld - use ld to detect and check drives");
     klog("clear - use clear to clear display");
     klog("reboot - use reboot to reboot using triple fault");
-    klog("runtest - use runtest to run runtest.c and make some runtests");
+    klog("rt - use runtest to run runtest.c and make some runtests");
     klog("lib - bro u are using lib rn you should know what it does");
     klog("read - use read to read from some files");
     klog("ls - use ls to read all files from directory");
