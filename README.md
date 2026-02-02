@@ -12,6 +12,7 @@
 - runs well in qemu-i386
 - hasn't been tested on real HW yet
 - use klog for screen printing basic text
+- runs in ring0 atp
 
 ## Dependencies:
 - Linux debian:
@@ -35,6 +36,7 @@
 - [ ] GUI
 - [ ] Ethernet smart docking station conection
 - [ ] CD-DVD music/movies support
+- [ ] ring3 support
 
 ## Commands inside OS
 - **lib** to get more commands and info
@@ -44,8 +46,11 @@
 - rt → kinda interesting test thing for functionality testing of new functions etc...
 - reboot → makes triple fault to CPU
 - ld → info about drive
+- and much more...
 
 ## Filesystem
+
+- This table worked only on legacy 32MB drives, not now when the drive size is changed dynamically but the placement of different parts is still the same, only on different offsets:
 | Offset    | Component          | Description                                                                           |
 | --------- | ------------------ | ------------------------------------------------------------------------------------- |
 | `0x0000`  | Superblock         | Filesystem metadata: magic number, version, block size, inode count, data block count |
