@@ -199,6 +199,26 @@ void cmd_dl(int argc, char** argv) {
     klog("file deleted");
 }
 
+void cmd_wr(int argc, char** argv) {
+    if (argc < 3) {
+        klog("Usage: wr <filename> <data>");
+        return;
+    }
+    const char* filename = argv[1]; 
+    const char* data = argv[2];
+    //NEEDS TO CREATE INODE before wiritng in it
+    uint32_t inode = fs_create_file(filename);
+    if (inode == 0) {
+        klog("file creation failed");
+        return;
+    }
+    int written = fs_write(inode, (const uint8_t*)data, strlen(data));
+    if (written < 0) {
+        klog("write failed");
+    } else {
+        klog("write successful");
+    }
+}
 
 // comms table for functions link to comms:
 command_t commands[] = {
@@ -212,6 +232,7 @@ command_t commands[] = {
     {"read", cmd_read},
     {"ls", cmd_ls},
     {"lib", cmd_lib},
+    {"wr", cmd_wr},
     {"dl", cmd_dl}
 };
 //
