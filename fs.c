@@ -27,6 +27,9 @@
 #define BLOCK_BITMAP_LBA 1
 #define INODE_BITMAP_LBA 2
 #define INODE_TABLE_LBA 3
+//
+#define ROOT_INODE 0
+
 // DATA_LBA is computed at runtime once inode table size is known
 
 // Global filesystem layout state (filled during init_fs)
@@ -69,6 +72,23 @@ int alloc_block() {
         }
     }
     return -1;
+}
+
+// clear a bit in the on-disk block bitmap
+static void clear_block_bitmap_bit(uint32_t idx) {
+    if (idx >= g_superblock.total_blocks) return;
+    uint32_t bits_per_sector = SECTOR_SIZE * 8;
+    uint32_t sector_idx = idx / bits_per_sector;
+    uint32_t within = idx % bits_per_sector;
+    uint32_t byte_off = within / 8;
+    uint8_t buf[SECTOR_SIZE];
+    block_read(g_superblock.bitmap_start + sector_idx, buf);
+    buf[byte_off] &= ~(1 << (within % 8));
+    block_write(g_superblock.bitmap_start + sector_idx, buf);
+}
+
+void free_block(uint32_t idx) {
+    clear_block_bitmap_bit(idx);
 }
 
 void create_root() {
@@ -345,6 +365,12 @@ int alloc_inode() {
     return -1;
 }
 
+void free_inode(int idx) {
+    if (idx < 0 || (uint32_t)idx >= g_superblock.inode_count) return;
+    inode_bitmap[idx / 8] &= ~(1 << (idx % 8));
+    save_inode_bitmap();
+}
+
 // dir entry structure
 struct dirent {
     uint32_t inode;
@@ -396,6 +422,27 @@ int dir_add(inode_t* dir, const char* name, uint32_t inode) {
     }
     
     return -1; // directory full
+}
+
+int dir_remove(inode_t* dir, const char* name) {
+    if (dir->type != 2) return -1; // not a directory
+
+    uint8_t buf[SECTOR_SIZE];
+    block_read((uint32_t)dir->direct[0], buf);
+    struct dirent* entries = (struct dirent*)buf;
+    int entry_count = SECTOR_SIZE / sizeof(struct dirent);
+
+    for (int i = 0; i < entry_count; i++) {
+        if (entries[i].inode == 0) continue;
+        if (strcmp(entries[i].name, name) == 0) {
+            entries[i].inode = 0;
+            // clear name
+            for (int j = 0; j < (int)sizeof(entries[i].name); ++j) entries[i].name[j] = '\0';
+            block_write((uint32_t)dir->direct[0], buf);
+            return 0;
+        }
+    }
+    return -1;
 }
 
 // normal fs files writing
@@ -463,8 +510,26 @@ int fs_read(uint32_t inode, uint8_t* buf_out, size_t len) {
     return (int)toread;
 }
 
-int fs_delete_file(const char* path) {
-    //not implemented yet
-    //im too lazy to do ths
-    return -1;
+int fs_delete_file(const char* name) {
+    inode_t root;
+    read_inode(ROOT_INODE, &root);
+
+    int inode_num = dir_lookup(&root, name);
+    if (inode_num < 0)
+        return -1;
+
+    inode_t node;
+    read_inode(inode_num, &node);
+    // free data blocks
+    for (int i = 0; i < INODE_DIRECT; i++) {
+        if (node.direct[i] != 0) {
+            free_block(node.direct[i]);
+            node.direct[i] = 0;
+        }
+    }
+    // free inode bitmap entry
+    free_inode(inode_num);
+    // remove from directory
+    dir_remove(&root, name);
+    return 0;
 }

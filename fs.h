@@ -21,6 +21,7 @@ void load_inode_bitmap(void);
 void save_inode_bitmap(void);
 int alloc_block(void);
 void create_root(void);
+// helper declarations requiring `inode_t` are below
 
 typedef struct {
     uint32_t magic;
@@ -41,6 +42,10 @@ typedef struct {
     uint8_t  type;         
     uint8_t  reserved[11];  
 } inode_t;
+// helper declarations that need `inode_t`
+void free_block(uint32_t idx);
+void free_inode(int idx);
+int dir_remove(inode_t* dir, const char* name);
 void block_read(uint32_t lba, uint8_t* buf);
 void block_write(uint32_t lba, const uint8_t* buf);
 void read_inode(int idx, inode_t* inode);

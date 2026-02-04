@@ -187,6 +187,19 @@ void cmd_ls(int argc, char** argv) {
     }
 }
 
+void cmd_dl(int argc, char** argv) {
+    if (argc < 2) {
+        klog("usage: dl <file>");
+        return;
+    }
+    if (fs_delete_file(argv[1]) < 0) {
+        klog("dl: failed");
+        return;
+    }
+    klog("file deleted");
+}
+
+
 // comms table for functions link to comms:
 command_t commands[] = {
     {"help", cmd_help},
@@ -198,7 +211,8 @@ command_t commands[] = {
     {"rt", cmd_runtest},
     {"read", cmd_read},
     {"ls", cmd_ls},
-    {"lib", cmd_lib}
+    {"lib", cmd_lib},
+    {"dl", cmd_dl}
 };
 //
 int command_count = sizeof(commands)/sizeof(command_t);
