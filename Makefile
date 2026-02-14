@@ -81,7 +81,8 @@ dd128:
 	dd if=/dev/zero of=disk.img bs=1M count=128 status=progress
 dd4:
 	dd if=/dev/zero of=disk.img bs=1M count=4 status=progress
-
+hd:
+	hexdump -C disk.img | less
 #WHOLE MAKE CYCLE
 a:
 	make clean
