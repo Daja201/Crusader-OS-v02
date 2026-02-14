@@ -1,8 +1,9 @@
-not 512B adresare
-
+not 512B adressers
 proglang
 graphics
 txt editor
 
 --
 fs_delete_file
+writing via wr command just plain some text
+write another something to lib
