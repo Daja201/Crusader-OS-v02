@@ -9,6 +9,7 @@
 #include "runtest.h"
 #include "fs.h"
 #include "library.h"
+#include "klog.h"
 
 // pure commands inside lore lol <3
 
@@ -220,6 +221,18 @@ void cmd_wr(int argc, char** argv) {
     }
 }
 
+void cmd_time(int argc, char** argv) {
+    int year, month, day;
+    int hour, min, sec;
+    rtc_get_datetime(&year, &month, &day, &hour, &min, &sec);
+    char b[8];
+    klog("RTC: ");
+    itoa(year, b, 10); kklog(b);;itoa(month, b, 10);kklog(" "); kklog(b);itoa(day, b, 10);kklog(" "); kklog(b); kklog(" ");
+    itoa(hour, b, 10); kklog(b); kklog(":");
+    itoa(min, b, 10); kklog(b); kklog(":"); 
+    itoa(sec, b, 10); klog(b);
+}
+
 // comms table for functions link to comms:
 command_t commands[] = {
     {"help", cmd_help},
@@ -233,7 +246,8 @@ command_t commands[] = {
     {"ls", cmd_ls},
     {"lib", cmd_lib},
     {"wr", cmd_wr},
-    {"dl", cmd_dl}
+    {"dl", cmd_dl},
+    {"time", cmd_time}
 };
 //
 int command_count = sizeof(commands)/sizeof(command_t);

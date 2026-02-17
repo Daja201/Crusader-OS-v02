@@ -11,7 +11,7 @@
 - 32 bit atp
 - runs well in qemu-i386
 - hasn't been tested on real HW yet
-- use klog for screen printing basic text
+- use klog for screen printing basic text and kklog for printing without /n after every ("")
 - runs in ring0 atp
 
 ## Dependencies:
