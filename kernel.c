@@ -15,8 +15,7 @@
 // C FUNC FOR PRINT
 //For print call klog
 
-void kmain()
-{
+void kmain() {
     vga_init();
     terminal_init();
     klog("BOOT OK");

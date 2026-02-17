@@ -51,6 +51,7 @@
 ## Filesystem
 
 - This table worked only on legacy 32MB drives, not now when the drive size is changed dynamically but the placement of different parts is still the same, only on different offsets:
+
 | Offset    | Component          | Description                                                                           |
 | --------- | ------------------ | ------------------------------------------------------------------------------------- |
 | `0x0000`  | Superblock         | Filesystem metadata: magic number, version, block size, inode count, data block count |
@@ -61,6 +62,7 @@
 | End of FS | Reserved / padding | Reserved space for future expansion                                                   |
 
 - FS has no more fixed size so you can use whatever sized disk.img you want
+- You can now also save and see more than 16 files (commit v14)
 - i use **dd if=/dev/zero of=disk.img bs=1M count=32 status=progress** for recleaning drive
 - and **hexdump -C disk.img | less** for seeing inside content
 

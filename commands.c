@@ -135,28 +135,22 @@ void cmd_read(int argc, char** argv) {
         klog("Usage: read <filename>");
         return;
     }
-    
-    // Get root directory inode
     inode_t root;
     read_inode(0, &root);
-    
-    // Look up file in root directory
+
     int inode_num = dir_lookup(&root, argv[1]);
     if (inode_num < 0) {
         klog("Error: File not found");
         return;
     }
-    
-    // Read the file
+    inode_t file_node;
+    read_inode(inode_num, &file_node);
     uint8_t buf[512];
-    int bytes_read = fs_read(inode_num, buf, 512);
-    
+    int bytes_read = fs_read(inode_num, &file_node, 0, 512, buf);
     if (bytes_read <= 0) {
-        klog("Error: Could not read file");
+        klog("Error: Could not read file (or empty)");
         return;
     }
-    
-    // Print the file contents
     for (int i = 0; i < bytes_read; i++) {
         if (buf[i] == '\0') break;
         char ch[2] = {buf[i], '\0'};

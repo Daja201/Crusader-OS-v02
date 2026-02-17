@@ -318,7 +318,9 @@ void init_fs() {
         int idx = dir_lookup(&root, ".disksize");
         if (idx >= 0) {
             uint8_t tmp[64];
-            int r = fs_read((uint32_t)idx, tmp, sizeof(tmp)-1);
+            inode_t file_node;
+            read_inode((uint32_t)idx, &file_node);
+            int r = fs_read((uint32_t)idx, &file_node, 0, sizeof(tmp)-1, tmp);
             if (r > 0) {
                 tmp[r] = '\0';
                 // parse decimal
@@ -455,8 +457,8 @@ int dir_remove(inode_t* dir, const char* name) {
 //whole srite/read/delete idk whatever function
 //absolute pain
 uint32_t fs_create_file(const char* path);
-int fs_write(uint32_t inode, const uint8_t* data, size_t len);
-int fs_read(uint32_t inode, uint8_t* buf, size_t len);
+//int fs_write(uint32_t inode, const uint8_t* data, size_t len);
+//int fs_read(uint32_t inode, uint8_t* buf, size_t len);
 int fs_delete_file(const char* path);
 
 uint32_t fs_create_file(const char* path) {
@@ -486,34 +488,72 @@ uint32_t fs_create_file(const char* path) {
     return (uint32_t)idx;
 }
 
-int fs_write(uint32_t inode, const uint8_t* data, size_t len) {
+int fs_write(uint32_t inode_idx, const uint8_t* data, size_t len) {
     inode_t node;
-    read_inode(inode, &node);
-    if (node.direct[0] == 0) return -1;
-
+    read_inode(inode_idx, &node);
+    size_t written = 0;
     uint8_t buf[SECTOR_SIZE];
-    memset(buf, 0, SECTOR_SIZE);
-    size_t towrite = len;
-    if (towrite > SECTOR_SIZE) towrite = SECTOR_SIZE;
-    memcpy(buf, data, towrite);
+    while (written < len) {
+        // 1. Zjistíme, do kterého bloku (0-11) zrovna píšeme
+        uint32_t block_index = written / SECTOR_SIZE;
+        uint32_t offset_in_block = written % SECTOR_SIZE;
+        if (block_index >= 12) {
+            //add indirect block logic
+            break; 
+        }
+        if (node.direct[block_index] == 0) {
+            uint32_t new_block = alloc_block();
+            if (new_block == 0) {
+                return -1;
+            }
+            node.direct[block_index] = new_block;
+            write_inode(inode_idx, &node);
+            memset(buf, 0, SECTOR_SIZE);
+        } else {
+            block_read(node.direct[block_index], buf);
+        }
+        size_t space_in_sector = SECTOR_SIZE - offset_in_block;
+        size_t chunk_size = len - written;
+        if (chunk_size > space_in_sector) {
+            chunk_size = space_in_sector;
+        }
+        memcpy(buf + offset_in_block, data + written, chunk_size);
+        block_write(node.direct[block_index], buf);
 
-    block_write((uint32_t)node.direct[0], buf);
-    node.size = (uint32_t)towrite;
-    write_inode(inode, &node);
-    return (int)towrite;
+        written += chunk_size;
+    }
+    if (written > node.size) {
+        node.size = (uint32_t)written;
+        write_inode(inode_idx, &node);
+    }
+    return (int)written;
 }
 
-int fs_read(uint32_t inode, uint8_t* buf_out, size_t len) {
-    inode_t node;
-    read_inode(inode, &node);
-    if (node.direct[0] == 0) return -1;
-
-    uint8_t buf[SECTOR_SIZE];
-    block_read((uint32_t)node.direct[0], buf);
-    size_t toread = (len < node.size) ? len : node.size;
-    if (toread > SECTOR_SIZE) toread = SECTOR_SIZE;
-    memcpy(buf_out, buf, toread);
-    return (int)toread;
+int fs_read(uint32_t inode_idx, inode_t* node, uint32_t offset, uint32_t size, uint8_t* buffer) {
+    uint32_t bytes_read = 0;
+    uint8_t sector_buf[512];
+    if (offset + size > node->size) {
+        size = node->size - offset;
+    }
+    while (bytes_read < size) {
+        uint32_t current_global_offset = offset + bytes_read;
+        uint32_t block_index = current_global_offset / 512;
+        uint32_t offset_in_block = current_global_offset % 512;
+        if (block_index >= 12) break;
+        uint32_t block_addr = node->direct[block_index];
+        if (block_addr == 0) {
+            memset(sector_buf, 0, 512);
+        } else {
+            block_read(block_addr, sector_buf);
+        }
+        uint32_t chunk_size = 512 - offset_in_block;
+        if (chunk_size > (size - bytes_read)) {
+            chunk_size = size - bytes_read;
+        }
+        memcpy(buffer + bytes_read, sector_buf + offset_in_block, chunk_size);
+        bytes_read += chunk_size;
+    }
+    return bytes_read;
 }
 
 int fs_delete_file(const char* name) {
