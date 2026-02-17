@@ -15,6 +15,8 @@ void init_fs(void);
 #define INODE_BITMAP_SIZE 512
 extern uint8_t inode_bitmap[INODE_BITMAP_SIZE];
 
+
+
 void load_block_bitmap(void);
 void save_block_bitmap(void);
 void load_inode_bitmap(void);
@@ -57,6 +59,7 @@ int fs_write(uint32_t inode, const uint8_t* data, size_t len);
 int fs_read(uint32_t inode, uint8_t* buf, size_t len);
 int fs_delete_file(const char* path);
 int dir_lookup(inode_t* dir, const char* name);
-int dir_add(inode_t* dir, const char* name, uint32_t inode);
+//int dir_add(inode_t* dir, const char* name, uint32_t inode);
+int dir_add(uint32_t dir_inode_id, inode_t* dir, const char* name, uint32_t inode_idx);
 
 #endif

@@ -10,7 +10,9 @@
 #include "fs.h"
 #include "library.h"
 #include "klog.h"
-
+#include "string.h"
+#include "fs.h"
+#include "rtc.h"
 // pure commands inside lore lol <3
 
 void cmd_help(int argc, char** argv) {
@@ -165,29 +167,28 @@ void cmd_read(int argc, char** argv) {
 
 void cmd_ls(int argc, char** argv) {
     inode_t root;
-    read_inode(0, &root);
-    
+    read_inode(0, &root); 
     uint8_t buf[512];
-    block_read((uint32_t)root.direct[0], buf);
-    
     struct dirent {
         uint32_t inode;
-        char name[28];
+        char name[28]; //4 + 28
     };
-    
-    struct dirent* entries = (struct dirent*)buf;
     int entry_count = 512 / sizeof(struct dirent);
-    
     klog("Files in root directory:");
-    for (int i = 0; i < entry_count; i++) {
-        if (entries[i].inode != 0) {
-            print_string("  ");
-            print_string(entries[i].name);
-            print_string("\n");
+    for (int b = 0; b < 12; b++) {
+        uint32_t block_lba = root.direct[b];
+        if (block_lba == 0) break; 
+        block_read(block_lba, buf);
+        struct dirent* entries = (struct dirent*)buf;
+        for (int i = 0; i < entry_count; i++) {
+            if (entries[i].inode != 0) {
+                print_string("  ");
+                print_string(entries[i].name);
+                print_string("\n");
+            }
         }
     }
 }
-
 void cmd_dl(int argc, char** argv) {
     if (argc < 2) {
         klog("usage: dl <file>");
