@@ -3,7 +3,7 @@ proglang
 graphics
 txt editor
 
---
+-- finished --
 fs_delete_file
 writing via wr command just plain some text
 write another something to lib

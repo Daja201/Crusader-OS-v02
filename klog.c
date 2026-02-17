@@ -6,15 +6,16 @@
 
 //print for chars
 
-void klog(const char* msg)
-{
+void klog(const char* msg) {
     print_string(msg);
     print_char('\n');
 }
-
+//print witohut new lines
+void kklog(const char* msg) {
+    print_string(msg);
+}
 //print for variables
-void klog_hex(uint32_t val)
-{
+void klog_hex(uint32_t val) {
     print_string("0x");
     print_hex(val);
     print_char('\n');
