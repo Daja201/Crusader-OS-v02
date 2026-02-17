@@ -1,5 +1,5 @@
 //NOT ANYMORE FIXED SIZE i hope
-
+#include "klog.h"
 #include "fs.h"
 #include <stdint.h>
 #include <string.h>
@@ -378,50 +378,56 @@ struct dirent {
 };
 
 int dir_lookup(inode_t* dir, const char* name) {
-    if (dir->type != 2) return -1; // not a directory
+    if (dir->type != 2) return -1;
     
     uint8_t buf[SECTOR_SIZE];
-    block_read((uint32_t)dir->direct[0], buf);
-    
-    struct dirent* entries = (struct dirent*)buf;
-    int entry_count = SECTOR_SIZE / sizeof(struct dirent);
-    
-    for (int i = 0; i < entry_count; i++) {
-        if (entries[i].inode == 0) continue;
-        if (strcmp(entries[i].name, name) == 0) {
-            return entries[i].inode;
+    int entries_per_block = SECTOR_SIZE / sizeof(struct dirent);
+
+    for (int b = 0; b < 12; b++) {
+        uint32_t lba = dir->direct[b];
+        if (lba == 0) break; 
+
+        block_read(lba, buf);
+        struct dirent* entries = (struct dirent*)buf;
+
+        for (int i = 0; i < entries_per_block; i++) {
+            if (entries[i].inode == 0) continue;
+            if (strcmp(entries[i].name, name) == 0) {
+                return (int)entries[i].inode;
+            }
         }
     }
     
     return -1;
 }
 
-int dir_add(inode_t* dir, const char* name, uint32_t inode) {
-    if (dir->type != 2) return -1; // not a directory
-    
+int dir_add(uint32_t dir_inode_id, inode_t* dir, const char* name, uint32_t inode_idx) {
     uint8_t buf[SECTOR_SIZE];
-    block_read((uint32_t)dir->direct[0], buf);
-    
-    struct dirent* entries = (struct dirent*)buf;
-    int entry_count = SECTOR_SIZE / sizeof(struct dirent);
-    
-    // find empty slot
-    for (int i = 0; i < entry_count; i++) {
-        if (entries[i].inode == 0) {
-            entries[i].inode = inode;
-            // simple copy instead of strncpy
-            int j = 0;
-            while (name[j] && j < 27) {
-                entries[i].name[j] = name[j];
-                j++;
-            }
-            entries[i].name[j] = '\0';
-            block_write((uint32_t)dir->direct[0], buf);
-            return 0;
+    for (int b = 0; b < 12; b++) {
+        if (dir->direct[b] == 0) {
+            uint32_t new_block = alloc_block();
+            if (new_block == 0) return -1; 
+            dir->direct[b] = new_block;
+            memset(buf, 0, SECTOR_SIZE);
+            write_inode(dir_inode_id, dir);
+        } else {
+            block_read(dir->direct[b], buf);
         }
-    }
+
+        struct dirent* entries = (struct dirent*)buf;
+        for (int i = 0; i < (SECTOR_SIZE / sizeof(struct dirent)); i++) {
+            if (entries[i].inode == 0) { 
+                entries[i].inode = inode_idx;
+                strncpy(entries[i].name, name, 31);
+                block_write(dir->direct[b], buf);
+                return 0; 
+            }
+        }
     
-    return -1; // directory full
+    }
+    // do indirect block
+    klog("ERROR: FULL, MAKE AN INDIRECT BLOCK SUPPORT");
+    return -1;
 }
 
 int dir_remove(inode_t* dir, const char* name) {
@@ -475,7 +481,7 @@ uint32_t fs_create_file(const char* path) {
     // Add file to root directory
     inode_t root;
     read_inode(0, &root);
-    dir_add(&root, path, (uint32_t)idx);
+    dir_add(0, &root, path, (uint32_t)idx);
     
     return (uint32_t)idx;
 }

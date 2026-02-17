@@ -4,7 +4,7 @@
 #include "terminal.h"
 #include "fs.h"
 #include "rtc.h"
-
+#include "string.h"
 //SOME RANDOM C TYPA SHII
 
 //int sum_of_three(int a, int b, int c)
