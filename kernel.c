@@ -6,12 +6,10 @@
 #include "rtc.h"
 #include "string.h"
 //SOME RANDOM C TYPA SHII
-
 //int sum_of_three(int a, int b, int c)
 //{
 //    return a + b + c;
 //}
-
 // C FUNC FOR PRINT
 //For print call klog
 

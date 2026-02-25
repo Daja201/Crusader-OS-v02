@@ -80,10 +80,7 @@ void cmd_cow(int argc, char** argv) {
                 print_string("\n");
             }
             busy_ms(ms_per_frame);
-            
-        
         }
-        
     }
     return;
 }
@@ -120,10 +117,10 @@ void cmd_reboot(int argc, char** argv) {
     reboot_triple_fault();
 }
 
-void cmd_runtest(int argc, char** argv) {
+/*void cmd_runtest(int argc, char** argv) {
     klog("Trying runtest...\n");
     runtest_program();
-}
+} */
 
 void cmd_lib(int argc, char** argv) {
     klog("Welcome to library of Crusader OS:\n");
@@ -200,10 +197,11 @@ void cmd_wr(int argc, char** argv) {
         klog("Usage: wr <filename> <data>");
         return;
     }
+    const char* wr = "wr";
     const char* filename = argv[1]; 
     const char* data = argv[2];
     //NEEDS TO CREATE INODE before wiritng in it
-    uint32_t inode = fs_create_file(filename);
+    uint32_t inode = fs_create_file(filename, wr);
     if (inode == 0) {
         klog("file creation failed");
         return;
@@ -236,7 +234,7 @@ command_t commands[] = {
     {"cow", cmd_cow},
     {"cat", cmd_cat},
     {"ld", cmd_ld},
-    {"rt", cmd_runtest},
+//    {"rt", cmd_runtest},
     {"read", cmd_read},
     {"ls", cmd_ls},
     {"lib", cmd_lib},
