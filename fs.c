@@ -121,8 +121,6 @@ void write_inode(int idx, inode_t* inode) {
     block_write(block, buf);
 }
 
-
-
 // static fallback buffer and public pointer
 static uint8_t block_bitmap_static[BLOCK_BITMAP_MAX_SIZE];
 uint8_t *block_bitmap = block_bitmap_static;
@@ -456,36 +454,52 @@ int dir_remove(inode_t* dir, const char* name) {
 // normal fs files writing
 //whole srite/read/delete idk whatever function
 //absolute pain
-uint32_t fs_create_file(const char* path);
 //int fs_write(uint32_t inode, const uint8_t* data, size_t len);
 //int fs_read(uint32_t inode, uint8_t* buf, size_t len);
-int fs_delete_file(const char* path);
 
-uint32_t fs_create_file(const char* path) {
+uint32_t fs_create_file(const char* name, const char* main_tag) {
+    if (!main_tag || strlen(main_tag) == 0) return (uint32_t)-1;
     int idx = alloc_inode();
     if (idx < 0) return (uint32_t)-1;
     inode_t node;
     memset(&node, 0, sizeof(node));
-    node.type = 1; // regular file
+    node.type = 1;
     node.size = 0;
+    strncpy(node.main_tag, main_tag, TAG_LEN);
+    strncpy(node.tags[0], "normal", TAG_LEN);
 
     int b = alloc_block();
     if (b < 0) {
-        // rollback inode allocation
-        inode_bitmap[idx / 8] &= ~(1 << (idx % 8));
-        save_inode_bitmap();
+        free_inode(idx);
         return (uint32_t)-1;
     }
 
     node.direct[0] = b;
     write_inode(idx, &node);
-    
-    // Add file to root directory
     inode_t root;
     read_inode(0, &root);
-    dir_add(0, &root, path, (uint32_t)idx);
-    
+    dir_add(0, &root, name, (uint32_t)idx);
     return (uint32_t)idx;
+}
+
+int fs_find_by_tag(const char* tag, uint32_t* results, int max_results) {
+    int found_count = 0;
+    inode_t temp_node;
+    for (uint32_t i = 1; i < g_superblock.inode_count; i++) {
+        if (!(inode_bitmap[i / 8] & (1 << (i % 8)))) continue;
+
+        read_inode(i, &temp_node);
+        int match = (strcmp(temp_node.main_tag, tag) == 0);
+        for (int t = 0; t < MAX_TAGS && !match; t++) {
+            if (strcmp(temp_node.tags[t], tag) == 0) match = 1;
+        }
+
+        if (match) {
+            results[found_count++] = i;
+            if (found_count >= max_results) break;
+        }
+    }
+    return found_count;
 }
 
 int fs_write(uint32_t inode_idx, const uint8_t* data, size_t len) {
@@ -579,3 +593,4 @@ int fs_delete_file(const char* name) {
     dir_remove(&root, name);
     return 0;
 }
+
