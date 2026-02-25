@@ -17,8 +17,5 @@ if (written < 0) {
     else {}
 
 }
-
-
-//EXIT
-
+//¨4EXIT
 }
