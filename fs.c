@@ -5,15 +5,18 @@
 #include <string.h>
 #include "string.h"
 //
+#define ATA_PRIMARY   0x1F0
+#define ATA_SECONDARY 0x170
+//
 #define BLOCK_SIZE 512
-#define ATA_PRIMARY_DATA   0x1F0
-#define ATA_PRIMARY_STATUS 0x1F7
-#define ATA_PRIMARY_CMD    0x1F7
-#define ATA_PRIMARY_SECCOUNT 0x1F2
-#define ATA_PRIMARY_LBA0   0x1F3
-#define ATA_PRIMARY_LBA1   0x1F4
-#define ATA_PRIMARY_LBA2   0x1F5
-#define ATA_PRIMARY_DRIVE  0x1F6
+#define ATA_REG_DATA     0
+#define ATA_REG_SECCOUNT 2
+#define ATA_REG_LBA0     3
+#define ATA_REG_LBA1     4
+#define ATA_REG_LBA2     5
+#define ATA_REG_DRIVE    6
+#define ATA_REG_STATUS   7
+#define ATA_REG_CMD      7
 //
 #define ATA_CMD_READ  0x20
 #define ATA_CMD_WRITE 0x30
@@ -29,8 +32,61 @@
 #define INODE_TABLE_LBA 3
 //
 #define ROOT_INODE 0
+//
+uint16_t current_ata_base = ATA_PRIMARY;
+//
 
-// DATA_LBA is computed at runtime once inode table size is known
+//DEFINES LIKE ATA_PRIMARY_...smtng...
+//some ass(embly) functions
+static inline void outb(uint16_t port, uint8_t val) {
+    asm volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
+}
+
+static inline uint8_t inb(uint16_t port) {
+    uint8_t ret;
+    asm volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
+    return ret;
+}
+
+static inline void insw(uint16_t port, void* addr, int words) {
+    asm volatile("rep insw" : "+D"(addr), "+c"(words) : "d"(port) : "memory");
+}
+
+static inline void outsw(uint16_t port, const void* addr, int words) {
+    asm volatile("rep outsw" : "+S"(addr), "+c"(words) : "d"(port));
+}
+
+void ata_wait_busy() {
+    while (inb(current_ata_base + ATA_REG_STATUS) & 0x80);
+}
+
+void ata_wait_drq() {
+    while (!(inb(current_ata_base + ATA_REG_STATUS) & 0x08));
+}
+
+void block_read(uint32_t lba, uint8_t* buf) {
+    ata_wait_busy();
+    outb(current_ata_base + ATA_REG_DRIVE, 0xE0 | ((lba >> 24) & 0x0F));
+    outb(current_ata_base + ATA_REG_SECCOUNT, 1);
+    outb(current_ata_base + ATA_REG_LBA0, lba & 0xFF);
+    outb(current_ata_base + ATA_REG_LBA1, (lba >> 8) & 0xFF);
+    outb(current_ata_base + ATA_REG_LBA2, (lba >> 16) & 0xFF);
+    outb(current_ata_base + ATA_REG_CMD, ATA_CMD_READ);
+    ata_wait_drq();
+    insw(current_ata_base + ATA_REG_DATA, buf, SECTOR_SIZE / 2);
+}
+
+void block_write(uint32_t lba, const uint8_t* buf) {
+    ata_wait_busy();
+    outb(current_ata_base + ATA_REG_DRIVE, 0xE0 | ((lba >> 24) & 0x0F));
+    outb(current_ata_base + ATA_REG_SECCOUNT, 1);
+    outb(current_ata_base + ATA_REG_LBA0, lba & 0xFF);
+    outb(current_ata_base + ATA_REG_LBA1, (lba >> 8) & 0xFF);
+    outb(current_ata_base + ATA_REG_LBA2, (lba >> 16) & 0xFF);
+    outb(current_ata_base + ATA_REG_CMD, ATA_CMD_WRITE);
+    ata_wait_drq();
+    outsw(current_ata_base + ATA_REG_DATA, buf, SECTOR_SIZE / 2);
+}
 
 // Global filesystem layout state (filled during init_fs)
 superblock_t g_superblock;
@@ -152,7 +208,7 @@ void save_block_bitmap() {
         if (bytes_left > SECTOR_SIZE) bytes_left -= SECTOR_SIZE; else bytes_left = 0;
     }
 }
-
+/*
 static inline void outb(uint16_t port, uint8_t val) {
     asm volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
 }
@@ -170,79 +226,62 @@ static inline void insw(uint16_t port, void* addr, int words) {
 static inline void outsw(uint16_t port, const void* addr, int words) {
     asm volatile("rep outsw" : "+S"(addr), "+c"(words) : "d"(port));
 }
-
+*/
+//ENABLES MORE DRIVES // switch to secondary master
+void select_drive(uint16_t base, uint8_t slave) {
+    current_ata_base = base;
+    outb(base + ATA_REG_DRIVE, slave ? 0xB0 : 0xA0);
+    for(int i=0; i<4; i++) inb(base + ATA_REG_STATUS);
+}
+/*
 void ata_wait_busy() {
-    while (inb(ATA_PRIMARY_STATUS) & 0x80); // BSY=1
+    while (inb(current_ata_base + ATA_REG_STATUS) & 0x80);
 }
 
 void ata_wait_drq() {
     while (!(inb(ATA_PRIMARY_STATUS) & 0x08)); // DRQ=1
 }
-
+*/
 // Identify drive and return total LBA28 sectors (0 if error)
+//MAX 128GB ig
 uint32_t ata_get_total_sectors() {
     uint16_t id[256];
+    outb(current_ata_base + ATA_REG_DRIVE, 0xA0);
+    outb(current_ata_base + ATA_REG_SECCOUNT, 0);
+    outb(current_ata_base + ATA_REG_LBA0, 0);
+    outb(current_ata_base + ATA_REG_LBA1, 0);
+    outb(current_ata_base + ATA_REG_LBA2, 0);
+    outb(current_ata_base + ATA_REG_CMD, 0xEC); // IDENTIFY
 
-    // select master drive
-    outb(ATA_PRIMARY_DRIVE, 0xA0);
-    outb(ATA_PRIMARY_SECCOUNT, 0);
-    outb(ATA_PRIMARY_LBA0, 0);
-    outb(ATA_PRIMARY_LBA1, 0);
-    outb(ATA_PRIMARY_LBA2, 0);
-    outb(ATA_PRIMARY_CMD, 0xEC); // IDENTIFY
-
-    // wait for BSY clear
-    while (inb(ATA_PRIMARY_STATUS) & 0x80);
-
-    // check for error
-    if (inb(ATA_PRIMARY_STATUS) & 0x01) return 0;
-
-    // wait for DRQ
-    while (!(inb(ATA_PRIMARY_STATUS) & 0x08));
-
-    insw(ATA_PRIMARY_DATA, id, 256);
-
-    uint32_t sectors = ((uint32_t)id[61] << 16) | id[60];
-    if (sectors == 0) {
-        // maybe LBA48 or reporting failure — return 0 to fallback later
-        return 0;
-    }
-    return sectors;
-}
-
-void block_read(uint32_t lba, uint8_t* buf) {
     ata_wait_busy();
-    outb(ATA_PRIMARY_DRIVE, 0xE0 | ((lba >> 24) & 0x0F));
-    outb(ATA_PRIMARY_SECCOUNT, 1);
-    outb(ATA_PRIMARY_LBA0, lba & 0xFF);
-    outb(ATA_PRIMARY_LBA1, (lba >> 8) & 0xFF);
-    outb(ATA_PRIMARY_LBA2, (lba >> 16) & 0xFF);
-    outb(ATA_PRIMARY_CMD, ATA_CMD_READ);
-
+    if (inb(current_ata_base + ATA_REG_STATUS) & 0x01) return 0;
     ata_wait_drq();
-    insw(ATA_PRIMARY_DATA, buf, SECTOR_SIZE / 2);
-}
 
-void block_write(uint32_t lba, const uint8_t* buf) {
-    ata_wait_busy();
-    outb(ATA_PRIMARY_DRIVE, 0xE0 | ((lba >> 24) & 0x0F));
-    outb(ATA_PRIMARY_SECCOUNT, 1);
-    outb(ATA_PRIMARY_LBA0, lba & 0xFF);
-    outb(ATA_PRIMARY_LBA1, (lba >> 8) & 0xFF);
-    outb(ATA_PRIMARY_LBA2, (lba >> 16) & 0xFF);
-    outb(ATA_PRIMARY_CMD, ATA_CMD_WRITE);
-
-    ata_wait_drq();
-    outsw(ATA_PRIMARY_DATA, buf, SECTOR_SIZE / 2);
+    insw(current_ata_base + ATA_REG_DATA, id, 256);
+    return ((uint32_t)id[61] << 16) | id[60];
 }
 
 
 void init_fs() {
+    current_ata_base = ATA_PRIMARY;
+    uint32_t drive_sectors = ata_get_total_sectors();
+
+    // 2. Pokud nic, zkus Secondary Master
+    if (drive_sectors == 0) {
+        klog("Primary Master not found, trying Secondary...");
+        current_ata_base = ATA_SECONDARY;
+        drive_sectors = ata_get_total_sectors();
+    }
+
+    if (drive_sectors == 0) {
+        klog("ERROR: No IDE drive found!");
+        return;
+    }
     superblock_t sb;
     uint8_t buf[SECTOR_SIZE];
     int i;
     //Detects size
-    uint32_t drive_sectors = ata_get_total_sectors();
+    //uint32_t drive_sectors = ata_get_total_sectors();
 //    if (drive_sectors == 0) {
 //    // tries 65536 sectors if identifies error / nothing
 //        drive_sectors = 65536;
@@ -590,3 +629,5 @@ int fs_delete_file(const char* name) {
     dir_remove(&root, name);
     return 0;
 }
+
+

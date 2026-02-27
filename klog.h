@@ -5,4 +5,5 @@ void klog(const char *msg);
 void kklog(const char *msg);
 void klog_hex(uint32_t val);
 void klogf(const char *fmt, ...);
+void kklogf(const char *fmt, ...);
 #endif
