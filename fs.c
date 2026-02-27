@@ -487,13 +487,11 @@ int fs_find_by_tag(const char* tag, uint32_t* results, int max_results) {
     inode_t temp_node;
     for (uint32_t i = 1; i < g_superblock.inode_count; i++) {
         if (!(inode_bitmap[i / 8] & (1 << (i % 8)))) continue;
-
         read_inode(i, &temp_node);
         int match = (strcmp(temp_node.main_tag, tag) == 0);
         for (int t = 0; t < MAX_TAGS && !match; t++) {
             if (strcmp(temp_node.tags[t], tag) == 0) match = 1;
         }
-
         if (match) {
             results[found_count++] = i;
             if (found_count >= max_results) break;
@@ -508,7 +506,6 @@ int fs_write(uint32_t inode_idx, const uint8_t* data, size_t len) {
     size_t written = 0;
     uint8_t buf[SECTOR_SIZE];
     while (written < len) {
-        // 1. Zjistíme, do kterého bloku (0-11) zrovna píšeme
         uint32_t block_index = written / SECTOR_SIZE;
         uint32_t offset_in_block = written % SECTOR_SIZE;
         if (block_index >= 12) {
@@ -593,4 +590,3 @@ int fs_delete_file(const char* name) {
     dir_remove(&root, name);
     return 0;
 }
-

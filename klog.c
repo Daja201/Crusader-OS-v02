@@ -99,3 +99,82 @@ void klogf(const char *fmt, ...) {
 
     va_end(args);
 }
+
+void kklogf(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+
+    char buf[32];
+    char ch;
+
+    for (size_t i = 0; fmt[i]; i++) {
+        if (fmt[i] != '%') {
+            char out[2] = { fmt[i], 0 };
+            kklog(out);
+            continue;
+        }
+
+        i++;
+
+        switch (fmt[i]) {
+            case 'd': {
+                int v = va_arg(args, int);
+                itoa(v, buf, 10);
+                kklog(buf);
+                break;
+            }
+            case 'x': {
+                int v = va_arg(args, int);
+                itoa(v, buf, 16);
+                kklog("0x");
+                kklog(buf);
+                break;
+            }
+            case 's': {
+                char *s = va_arg(args, char*);
+                if (!s) s = "(null)";
+                kklog(s);
+                break;
+            }
+            case 'c': {
+                ch = (char)va_arg(args, int);
+                char out[2] = { ch, 0 };
+                kklog(out);
+                break;
+            }
+            case 'l': {
+                //PART OF BIGGER DRIVE SUPPORT
+                if (fmt[i+1] == 'l' && fmt[i+2] == 'u') {
+                    unsigned long long v = va_arg(args, unsigned long long);
+    
+                    int idx = 0;
+                    if (v == 0) {
+                        buf[idx++] = '0';
+                    } else {
+                        unsigned long long div = 1;
+                        while (div <= v / 10) div *= 10;
+                        while (div > 0) {
+                            buf[idx++] = '0' + (v / div);
+                            v %= div;
+                            div /= 10;
+                        }
+                    }
+                    buf[idx] = '\0';
+                    kklog(buf);
+                    i += 2; 
+                } else {
+                    kklog("<?>");
+                }
+                break;
+            }
+            case '%':
+                kklog("%");
+                break;
+            default:
+                kklog("<?>");
+                break;
+        }
+    }
+
+    va_end(args);
+}

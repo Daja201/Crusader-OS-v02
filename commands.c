@@ -163,6 +163,7 @@ void cmd_ls(int argc, char** argv) {
     struct dirent {
         uint32_t inode;
         char name[28]; //4 + 28
+        //char tag[28];
     };
     int entry_count = 512 / sizeof(struct dirent);
     klog("Files in root directory:");
@@ -173,8 +174,12 @@ void cmd_ls(int argc, char** argv) {
         struct dirent* entries = (struct dirent*)buf;
         for (int i = 0; i < entry_count; i++) {
             if (entries[i].inode != 0) {
+                inode_t file_node;
+                read_inode(entries[i].inode, &file_node);
                 print_string("  ");
                 print_string(entries[i].name);
+                print_string(" - ");
+                print_string(file_node.main_tag);
                 print_string("\n");
             }
         }
@@ -226,6 +231,25 @@ void cmd_time(int argc, char** argv) {
     itoa(sec, b, 10); klog(b);
 }
 
+void cmd_find(int argc, char** argv) {
+    if (argc < 2) {
+        klogf("usage: find <tag>\n");
+        return;
+    }
+    const char* tag = argv[1];
+    uint32_t results[32];
+    int found_count = fs_find_by_tag(tag, results, 32);
+    if (found_count <= 0) {
+            kklogf("No files found with tag: %s", tag);
+        } else {
+            kklogf("Found %d files:", found_count);
+        for (int i = 0; i < found_count; i++) {
+            kklogf(" - Inode: %d", results[i]);
+        }
+    }
+    klog("\n");
+}
+
 // comms table for functions link to comms:
 command_t commands[] = {
     {"help", cmd_help},
@@ -234,7 +258,7 @@ command_t commands[] = {
     {"cow", cmd_cow},
     {"cat", cmd_cat},
     {"ld", cmd_ld},
-//    {"rt", cmd_runtest},
+    {"fd", cmd_find},
     {"read", cmd_read},
     {"ls", cmd_ls},
     {"lib", cmd_lib},
