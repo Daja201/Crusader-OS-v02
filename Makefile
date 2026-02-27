@@ -72,8 +72,7 @@ clean:
 
 # run
 run:
-	qemu-system-i386 -kernel kernel.elf -hda disk.img -m 512M -serial stdio
-
+	qemu-system-i386 -cdrom os.iso -drive file=disk.img,format=raw,index=0,media=disk -m 512M -serial stdio
 #tryna make auto dd
 dd32:
 	dd if=/dev/zero of=disk.img bs=1M count=32 status=progress
