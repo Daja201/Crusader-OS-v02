@@ -40,8 +40,6 @@
 
 ## Commands inside OS
 - **lib** to get more commands and info
-- cow → jumping cow
-- cat → just cat
 - help → help yourself lol :3
 - rt → kinda interesting test thing for functionality testing of new functions etc...
 - reboot → makes triple fault to CPU
@@ -50,18 +48,17 @@
 
 ## Filesystem
 
-- This table worked only on legacy 32MB drives, not now when the drive size is changed dynamically but the placement of different parts is still the same, only on different offsets:
-
 | Offset    | Component          | Description                                                                           |
 | --------- | ------------------ | ------------------------------------------------------------------------------------- |
-| `0x0000`  | Superblock         | Filesystem metadata: magic number, version, block size, inode count, data block count |
-| `0x0200`  | Block Bitmap       | Tracks which data blocks are used or free                                             |
-| `0x0400`  | Inode Bitmap       | Tracks which inodes are used or free                                                  |
-| `0x0600`  | Inode Table        | Stores file metadata: type, size, and pointers to data blocks                         |
-| `0x1600`  | Data Blocks        | Stores actual file content                                                            |
-| End of FS | Reserved / padding | Reserved space for future expansion                                                   |
+| `LBA0`  | Superblock         | Filesystem metadata: 0x5A4C534A, total block count, starting location of other zones |
+| `LBA1`  | Block Bitmap       | Each bit represents a block.                                             |
+| `LBA2`  | Inode Bitmap       | Tracks which inodes are used or free                                                  |
+| `LBA3`  | Inode Table        | Every file has inode_t structure here                         |
+| `LBA4`  | Data Blocks        | Stores actual file data                                                             |
 
-- FS has no more fixed size so you can use whatever sized disk.img you want
+- It uses ADA /(IDE)
+- Maximum file size is currently 6kB (12*512B)
+- FS has no more fixed size so you can use whatever sized disk.img you want (I guess up to 128Gb by hardware)
 - You can now also save and see more than 16 files (commit v14)
 - i use **dd if=/dev/zero of=disk.img bs=1M count=32 status=progress** for recleaning drive
 - and **hexdump -C disk.img | less** for seeing inside content
