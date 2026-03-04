@@ -12,7 +12,7 @@
 - runs well in qemu-i386
 - hasn't been tested on real HW yet
 - use klog for screen printing basic text and kklog for printing without /n after every ("")
-- runs in ring0 atp
+- runs in ring0
 
 ## Dependencies:
 - Linux debian:
@@ -24,8 +24,8 @@
 - [x] C support
 - [x] terminal
 - [x] custom filesystem
-- [ ] usb support
 - [x] keyboard support
+- [ ] usb support
 - [ ] sound support
 - [ ] txt editors
 - [ ] apps
@@ -36,7 +36,6 @@
 - [ ] GUI
 - [ ] Ethernet smart docking station conection
 - [ ] CD-DVD music/movies support
-- [ ] ring3 support
 
 ## Commands inside OS
 - **lib** to get more commands and info

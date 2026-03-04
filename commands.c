@@ -233,7 +233,7 @@ void cmd_time(int argc, char** argv) {
 
 void cmd_find(int argc, char** argv) {
     if (argc < 2) {
-        klogf("usage: find <tag>\n");
+        kklogf("usage: find <tag>\n");
         return;
     }
     const char* tag = argv[1];

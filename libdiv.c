@@ -1,8 +1,5 @@
 #include <stdint.h>
 
-// Minimal implementations of 64-bit unsigned division/modulo helpers
-// used by compiler when compiling 64-bit arithmetic on i386
-
 unsigned long long __udivdi3(unsigned long long a, unsigned long long b) {
     if (b == 0) return ~0ULL;
     unsigned long long q = 0;

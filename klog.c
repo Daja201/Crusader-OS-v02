@@ -4,17 +4,20 @@
 #include "string.h"
 #include <stdarg.h>
 
-//print for chars
+//klog → print
+//klogf → print with formatting
+//kklog → print without /n
+//kklog → print with formatting without /n
 
 void klog(const char* msg) {
     print_string(msg);
     print_char('\n');
 }
-//print witohut new lines
+
 void kklog(const char* msg) {
     print_string(msg);
 }
-//print for variables
+
 void klog_hex(uint32_t val) {
     print_string("0x");
     print_hex(val);
@@ -24,19 +27,15 @@ void klog_hex(uint32_t val) {
 void klogf(const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
-
     char buf[32];
     char ch;
-
     for (size_t i = 0; fmt[i]; i++) {
         if (fmt[i] != '%') {
             char out[2] = { fmt[i], 0 };
             klog(out);
             continue;
         }
-
         i++;
-
         switch (fmt[i]) {
             case 'd': {
                 int v = va_arg(args, int);
@@ -64,7 +63,7 @@ void klogf(const char *fmt, ...) {
                 break;
             }
             case 'l': {
-                //PART OF BIGGER DRIVE SUPPORT
+
                 if (fmt[i+1] == 'l' && fmt[i+2] == 'u') {
                     unsigned long long v = va_arg(args, unsigned long long);
     
@@ -143,8 +142,7 @@ void kklogf(const char *fmt, ...) {
                 break;
             }
             case 'l': {
-                //PART OF BIGGER DRIVE SUPPORT
-                if (fmt[i+1] == 'l' && fmt[i+2] == 'u') {
+               if (fmt[i+1] == 'l' && fmt[i+2] == 'u') {
                     unsigned long long v = va_arg(args, unsigned long long);
     
                     int idx = 0;

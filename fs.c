@@ -1,13 +1,11 @@
-//NOT ANYMORE FIXED SIZE i hope
 #include "klog.h"
 #include "fs.h"
 #include <stdint.h>
 #include <string.h>
 #include "string.h"
-//
+
 #define ATA_PRIMARY   0x1F0
 #define ATA_SECONDARY 0x170
-//
 #define BLOCK_SIZE 512
 #define ATA_REG_DATA     0
 #define ATA_REG_SECCOUNT 2
@@ -17,27 +15,20 @@
 #define ATA_REG_DRIVE    6
 #define ATA_REG_STATUS   7
 #define ATA_REG_CMD      7
-//
 #define ATA_CMD_READ  0x20
 #define ATA_CMD_WRITE 0x30
 #define SECTOR_SIZE 512
-//
 #define INODE_TABLE_START 3
 #define INODE_SIZE 64
 #define INODES_PER_BLOCK (512 / INODE_SIZE)
-//
 #define SUPERBLOCK_LBA 0
 #define BLOCK_BITMAP_LBA 1
 #define INODE_BITMAP_LBA 2
 #define INODE_TABLE_LBA 3
-//
 #define ROOT_INODE 0
-//
-uint16_t current_ata_base = ATA_PRIMARY;
-//
 
-//DEFINES LIKE ATA_PRIMARY_...smtng...
-//some ass(embly) functions
+uint16_t current_ata_base = ATA_PRIMARY;
+
 static inline void outb(uint16_t port, uint8_t val) {
     asm volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
 }
@@ -88,20 +79,17 @@ void block_write(uint32_t lba, const uint8_t* buf) {
     outsw(current_ata_base + ATA_REG_DATA, buf, SECTOR_SIZE / 2);
 }
 
-// Global filesystem layout state (filled during init_fs)
 superblock_t g_superblock;
 static uint32_t inode_table_blocks = 0;
 static uint32_t block_bitmap_sectors = 0;
 static uint32_t inode_bitmap_sectors = 0;
-// effective block bitmap size in bytes (computed at init)
 static uint32_t block_bitmap_bytes = 0;
 
-// helpers for disk-backed block bitmap (bits per sector = SECTOR_SIZE*8 = 4096)
 static int get_block_bitmap_bit(uint32_t idx) {
-    if (idx >= g_superblock.total_blocks) return 1; // out of range considered used
+    if (idx >= g_superblock.total_blocks) return 1;
     uint32_t bits_per_sector = SECTOR_SIZE * 8;
     uint32_t sector_idx = idx / bits_per_sector;
-    uint32_t within = idx % bits_per_sector; // 0..4095
+    uint32_t within = idx % bits_per_sector; 
     uint32_t byte_off = within / 8;
     uint8_t buf[SECTOR_SIZE];
     block_read(g_superblock.bitmap_start + sector_idx, buf);
@@ -119,7 +107,7 @@ static void set_block_bitmap_bit(uint32_t idx) {
     buf[byte_off] |= (1 << (within % 8));
     block_write(g_superblock.bitmap_start + sector_idx, buf);
 }
-//
+
 int alloc_block() {
     for (uint32_t i = 0; i < g_superblock.total_blocks; i++) {
         if (!get_block_bitmap_bit(i)) {
@@ -130,7 +118,6 @@ int alloc_block() {
     return -1;
 }
 
-// clear a bit in the on-disk block bitmap
 static void clear_block_bitmap_bit(uint32_t idx) {
     if (idx >= g_superblock.total_blocks) return;
     uint32_t bits_per_sector = SECTOR_SIZE * 8;
@@ -157,7 +144,6 @@ void create_root() {
     write_inode(0, &root);
 }
 
-
 void read_inode(int idx, inode_t* inode) {
     uint8_t buf[512];
     uint32_t block = g_superblock.inode_start + idx / INODES_PER_BLOCK;
@@ -177,7 +163,6 @@ void write_inode(int idx, inode_t* inode) {
     block_write(block, buf);
 }
 
-// static fallback buffer and public pointer
 static uint8_t block_bitmap_static[BLOCK_BITMAP_MAX_SIZE];
 uint8_t *block_bitmap = block_bitmap_static;
 
@@ -200,7 +185,6 @@ void save_block_bitmap() {
     uint8_t *src = block_bitmap;
     for (uint32_t i = 0; i < block_bitmap_sectors; ++i) {
         uint32_t tocopy = bytes_left > SECTOR_SIZE ? SECTOR_SIZE : bytes_left;
-        // prepare sector buffer
         for (uint32_t j = 0; j < SECTOR_SIZE; ++j) tmp[j] = 0;
         if (tocopy > 0) memcpy(tmp, src, tocopy);
         block_write(g_superblock.bitmap_start + i, tmp);
@@ -208,42 +192,13 @@ void save_block_bitmap() {
         if (bytes_left > SECTOR_SIZE) bytes_left -= SECTOR_SIZE; else bytes_left = 0;
     }
 }
-/*
-static inline void outb(uint16_t port, uint8_t val) {
-    asm volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
-}
 
-static inline uint8_t inb(uint16_t port) {
-    uint8_t ret;
-    asm volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
-    return ret;
-}
-
-static inline void insw(uint16_t port, void* addr, int words) {
-    asm volatile("rep insw" : "+D"(addr), "+c"(words) : "d"(port) : "memory");
-}
-
-static inline void outsw(uint16_t port, const void* addr, int words) {
-    asm volatile("rep outsw" : "+S"(addr), "+c"(words) : "d"(port));
-}
-*/
-//ENABLES MORE DRIVES // switch to secondary master
 void select_drive(uint16_t base, uint8_t slave) {
     current_ata_base = base;
     outb(base + ATA_REG_DRIVE, slave ? 0xB0 : 0xA0);
     for(int i=0; i<4; i++) inb(base + ATA_REG_STATUS);
 }
-/*
-void ata_wait_busy() {
-    while (inb(current_ata_base + ATA_REG_STATUS) & 0x80);
-}
 
-void ata_wait_drq() {
-    while (!(inb(ATA_PRIMARY_STATUS) & 0x08)); // DRQ=1
-}
-*/
-// Identify drive and return total LBA28 sectors (0 if error)
-//MAX 128GB ig
 uint32_t ata_get_total_sectors() {
     uint16_t id[256];
     outb(current_ata_base + ATA_REG_DRIVE, 0xA0);
@@ -251,28 +206,22 @@ uint32_t ata_get_total_sectors() {
     outb(current_ata_base + ATA_REG_LBA0, 0);
     outb(current_ata_base + ATA_REG_LBA1, 0);
     outb(current_ata_base + ATA_REG_LBA2, 0);
-    outb(current_ata_base + ATA_REG_CMD, 0xEC); // IDENTIFY
-
+    outb(current_ata_base + ATA_REG_CMD, 0xEC);
     ata_wait_busy();
     if (inb(current_ata_base + ATA_REG_STATUS) & 0x01) return 0;
     ata_wait_drq();
-
     insw(current_ata_base + ATA_REG_DATA, id, 256);
     return ((uint32_t)id[61] << 16) | id[60];
 }
 
-
 void init_fs() {
     current_ata_base = ATA_PRIMARY;
     uint32_t drive_sectors = ata_get_total_sectors();
-
-    // 2. Pokud nic, zkus Secondary Master
     if (drive_sectors == 0) {
         klog("Primary Master not found, trying Secondary...");
         current_ata_base = ATA_SECONDARY;
         drive_sectors = ata_get_total_sectors();
     }
-
     if (drive_sectors == 0) {
         klog("ERROR: No IDE drive found!");
         return;
@@ -280,63 +229,37 @@ void init_fs() {
     superblock_t sb;
     uint8_t buf[SECTOR_SIZE];
     int i;
-    //Detects size
-    //uint32_t drive_sectors = ata_get_total_sectors();
-//    if (drive_sectors == 0) {
-//    // tries 65536 sectors if identifies error / nothing
-//        drive_sectors = 65536;
-//    }
     uint64_t total_blocks = drive_sectors;
-    // Note: bitmap size is dynamically allocated, no artificial limit
-
-    // compute effective bitmap bytes and sector counts
     block_bitmap_bytes = (total_blocks + 7) / 8;
     if (block_bitmap_bytes > BLOCK_BITMAP_MAX_SIZE) block_bitmap_bytes = BLOCK_BITMAP_MAX_SIZE;
     block_bitmap_sectors = (block_bitmap_bytes + SECTOR_SIZE - 1) / SECTOR_SIZE;
     inode_bitmap_sectors = (INODE_BITMAP_SIZE + SECTOR_SIZE - 1) / SECTOR_SIZE;
-
-    // layout of table
     sb.magic = 0x5A4C534A;
     sb.block_size = BLOCK_SIZE;
     sb.total_blocks = total_blocks;
     sb.inode_count = INODE_BITMAP_SIZE * 8;
     sb.bitmap_start = 1;
     sb.inode_start = sb.bitmap_start + block_bitmap_sectors + inode_bitmap_sectors;
-
     inode_table_blocks = (sb.inode_count + INODES_PER_BLOCK - 1) / INODES_PER_BLOCK;
     sb.data_start = sb.inode_start + inode_table_blocks;
-
-    // try read existing superblock first
     block_read(0, buf);
     for (i = 0; i < (int)sizeof(sb); ++i)
         ((uint8_t*)&g_superblock)[i] = buf[i];
 
     if (g_superblock.magic != 0x5A4C534A) {
-        // writes superblock
         for (i = 0; i < SECTOR_SIZE; ++i) buf[i] = 0;
         for (i = 0; i < (int)sizeof(sb); ++i) buf[i] = ((uint8_t*)&sb)[i];
         block_write(0, buf);
-
-        // zero bitmap sectors on disk (use local zero buffer)
         uint8_t zbuf[SECTOR_SIZE];
         for (i = 0; i < SECTOR_SIZE; ++i) zbuf[i] = 0;
         for (uint32_t s = 0; s < block_bitmap_sectors; ++s)
             block_write(sb.bitmap_start + s, zbuf);
-
-        // zero inode bitmap in memory
         memset(inode_bitmap, 0, INODE_BITMAP_SIZE);
-
-        // set global superblock so bitmap helpers use correct base
         g_superblock = sb;
-
-        // reserve metadata blocks (superblock + bitmaps + inode table) + root inode by setting bits on disk
         for (i = 0; i < (int)sb.data_start; i++)
             set_block_bitmap_bit((uint32_t)i);
         inode_bitmap[0] |= 1;
-
-        // write inode bitmap with root reserved
         save_inode_bitmap();
-
         create_root();
     } else {
         block_bitmap_bytes = (g_superblock.total_blocks + 7) / 8;
@@ -348,8 +271,6 @@ void init_fs() {
         load_inode_bitmap();
     }
     if (g_superblock.magic != 0x5A4C534A) g_superblock = sb;
-
-    // If IDENTIFY failed to report size, try reading persisted ".disksize" in root
     if (drive_sectors == 0) {
         inode_t root; read_inode(0, &root);
         int idx = dir_lookup(&root, ".disksize");
@@ -360,7 +281,6 @@ void init_fs() {
             int r = fs_read((uint32_t)idx, &file_node, 0, sizeof(tmp)-1, tmp);
             if (r > 0) {
                 tmp[r] = '\0';
-                // parse decimal
                 uint32_t v = 0;
                 for (int ii = 0; ii < r && tmp[ii]; ++ii) {
                     if (tmp[ii] < '0' || tmp[ii] > '9') break;
@@ -368,10 +288,8 @@ void init_fs() {
                 }
                 if (v > 0) {
                     g_superblock.total_blocks = v;
-                    // recompute bitmap bytes/sectors based on persisted value
                     block_bitmap_bytes = (g_superblock.total_blocks + 7) / 8;
                     block_bitmap_sectors = (block_bitmap_bytes + SECTOR_SIZE - 1) / SECTOR_SIZE;
-                    // rewrite superblock to reflect applied size
                     for (i = 0; i < SECTOR_SIZE; ++i) buf[i] = 0;
                     for (i = 0; i < (int)sizeof(g_superblock); ++i) buf[i] = ((uint8_t*)&g_superblock)[i];
                     block_write(0, buf);
@@ -380,6 +298,7 @@ void init_fs() {
         }
     }
 }
+
 uint8_t inode_bitmap[INODE_BITMAP_SIZE];
 void load_inode_bitmap() {
     uint32_t start = g_superblock.bitmap_start + block_bitmap_sectors;
@@ -387,12 +306,14 @@ void load_inode_bitmap() {
         block_read(start + i, inode_bitmap + i * SECTOR_SIZE);
     }
 }
+
 void save_inode_bitmap() {
     uint32_t start = g_superblock.bitmap_start + block_bitmap_sectors;
     for (uint32_t i = 0; i < inode_bitmap_sectors; ++i) {
         block_write(start + i, inode_bitmap + i * SECTOR_SIZE);
     }
 }
+
 int alloc_inode() {
     for (uint32_t i = 0; i < g_superblock.inode_count; i++) {
         if (!(inode_bitmap[i / 8] & (1 << (i % 8)))) {
@@ -410,7 +331,6 @@ void free_inode(int idx) {
     save_inode_bitmap();
 }
 
-// dir entry structure
 struct dirent {
     uint32_t inode;
     char name[28];
@@ -464,14 +384,12 @@ int dir_add(uint32_t dir_inode_id, inode_t* dir, const char* name, uint32_t inod
         }
     
     }
-    // do indirect block
     klog("ERROR: FULL, MAKE AN INDIRECT BLOCK SUPPORT");
     return -1;
 }
 
 int dir_remove(inode_t* dir, const char* name) {
-    if (dir->type != 2) return -1; // not a directory
-
+    if (dir->type != 2) return -1;
     uint8_t buf[SECTOR_SIZE];
     block_read((uint32_t)dir->direct[0], buf);
     struct dirent* entries = (struct dirent*)buf;
@@ -481,7 +399,6 @@ int dir_remove(inode_t* dir, const char* name) {
         if (entries[i].inode == 0) continue;
         if (strcmp(entries[i].name, name) == 0) {
             entries[i].inode = 0;
-            // clear name
             for (int j = 0; j < (int)sizeof(entries[i].name); ++j) entries[i].name[j] = '\0';
             block_write((uint32_t)dir->direct[0], buf);
             return 0;
@@ -489,12 +406,6 @@ int dir_remove(inode_t* dir, const char* name) {
     }
     return -1;
 }
-
-// normal fs files writing
-//whole srite/read/delete idk whatever function
-//absolute pain
-//int fs_write(uint32_t inode, const uint8_t* data, size_t len);
-//int fs_read(uint32_t inode, uint8_t* buf, size_t len);
 
 uint32_t fs_create_file(const char* name, const char* main_tag) {
     if (!main_tag || strlen(main_tag) == 0) return (uint32_t)-1;
@@ -548,7 +459,6 @@ int fs_write(uint32_t inode_idx, const uint8_t* data, size_t len) {
         uint32_t block_index = written / SECTOR_SIZE;
         uint32_t offset_in_block = written % SECTOR_SIZE;
         if (block_index >= 12) {
-            //add indirect block logic
             break; 
         }
         if (node.direct[block_index] == 0) {
@@ -609,25 +519,18 @@ int fs_read(uint32_t inode_idx, inode_t* node, uint32_t offset, uint32_t size, u
 int fs_delete_file(const char* name) {
     inode_t root;
     read_inode(ROOT_INODE, &root);
-
     int inode_num = dir_lookup(&root, name);
     if (inode_num < 0)
         return -1;
-
     inode_t node;
     read_inode(inode_num, &node);
-    // free data blocks
     for (int i = 0; i < INODE_DIRECT; i++) {
         if (node.direct[i] != 0) {
             free_block(node.direct[i]);
             node.direct[i] = 0;
         }
     }
-    // free inode bitmap entry
     free_inode(inode_num);
-    // remove from directory
     dir_remove(&root, name);
     return 0;
 }
-
-
