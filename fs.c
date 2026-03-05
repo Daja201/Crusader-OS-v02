@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "string.h"
-
+//def of macros
 #define ATA_PRIMARY   0x1F0
 #define ATA_SECONDARY 0x170
 #define BLOCK_SIZE 512
@@ -26,35 +26,34 @@
 #define INODE_BITMAP_LBA 2
 #define INODE_TABLE_LBA 3
 #define ROOT_INODE 0
-
+//defines 16bit space for ATA_PRIMARY
 uint16_t current_ata_base = ATA_PRIMARY;
-
+//sends 1 byte of "val" into HW port
 static inline void outb(uint16_t port, uint8_t val) {
     asm volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
+    //sends to assembly
 }
-
+//gets 1 byte of data from "inb" to "ret" and returns it
 static inline uint8_t inb(uint16_t port) {
     uint8_t ret;
     asm volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
     return ret;
 }
-
+//same as outb and inb but with blocks of data
 static inline void insw(uint16_t port, void* addr, int words) {
     asm volatile("rep insw" : "+D"(addr), "+c"(words) : "d"(port) : "memory");
 }
-
 static inline void outsw(uint16_t port, const void* addr, int words) {
     asm volatile("rep outsw" : "+S"(addr), "+c"(words) : "d"(port));
 }
-
+//wait until drive isn't busy
 void ata_wait_busy() {
     while (inb(current_ata_base + ATA_REG_STATUS) & 0x80);
 }
-
 void ata_wait_drq() {
     while (!(inb(current_ata_base + ATA_REG_STATUS) & 0x08));
 }
-
+//cuts 32-bit adress into 8-bit blocks and reads them
 void block_read(uint32_t lba, uint8_t* buf) {
     ata_wait_busy();
     outb(current_ata_base + ATA_REG_DRIVE, 0xE0 | ((lba >> 24) & 0x0F));
@@ -66,7 +65,7 @@ void block_read(uint32_t lba, uint8_t* buf) {
     ata_wait_drq();
     insw(current_ata_base + ATA_REG_DATA, buf, SECTOR_SIZE / 2);
 }
-
+//writes in 8-bit blocks
 void block_write(uint32_t lba, const uint8_t* buf) {
     ata_wait_busy();
     outb(current_ata_base + ATA_REG_DRIVE, 0xE0 | ((lba >> 24) & 0x0F));
@@ -78,13 +77,13 @@ void block_write(uint32_t lba, const uint8_t* buf) {
     ata_wait_drq();
     outsw(current_ata_base + ATA_REG_DATA, buf, SECTOR_SIZE / 2);
 }
-
+//declaration of vars for sb and inodes
 superblock_t g_superblock;
 static uint32_t inode_table_blocks = 0;
 static uint32_t block_bitmap_sectors = 0;
 static uint32_t inode_bitmap_sectors = 0;
 static uint32_t block_bitmap_bytes = 0;
-
+//is block idx free 0 or full 1
 static int get_block_bitmap_bit(uint32_t idx) {
     if (idx >= g_superblock.total_blocks) return 1;
     uint32_t bits_per_sector = SECTOR_SIZE * 8;
@@ -95,7 +94,7 @@ static int get_block_bitmap_bit(uint32_t idx) {
     block_read(g_superblock.bitmap_start + sector_idx, buf);
     return (buf[byte_off] >> (within % 8)) & 1;
 }
-
+//loads to ram, rewritest bit, unloads
 static void set_block_bitmap_bit(uint32_t idx) {
     if (idx >= g_superblock.total_blocks) return;
     uint32_t bits_per_sector = SECTOR_SIZE * 8;
@@ -107,7 +106,7 @@ static void set_block_bitmap_bit(uint32_t idx) {
     buf[byte_off] |= (1 << (within % 8));
     block_write(g_superblock.bitmap_start + sector_idx, buf);
 }
-
+//searches for free blocks
 int alloc_block() {
     for (uint32_t i = 0; i < g_superblock.total_blocks; i++) {
         if (!get_block_bitmap_bit(i)) {
@@ -117,7 +116,7 @@ int alloc_block() {
     }
     return -1;
 }
-
+//clears one block
 static void clear_block_bitmap_bit(uint32_t idx) {
     if (idx >= g_superblock.total_blocks) return;
     uint32_t bits_per_sector = SECTOR_SIZE * 8;
@@ -129,43 +128,40 @@ static void clear_block_bitmap_bit(uint32_t idx) {
     buf[byte_off] &= ~(1 << (within % 8));
     block_write(g_superblock.bitmap_start + sector_idx, buf);
 }
-
+//wrapper for clear_block_bitmap_bit
 void free_block(uint32_t idx) {
     clear_block_bitmap_bit(idx);
 }
-
+//creates root adresary
 void create_root() {
     inode_t root = {0};
+    //adresary
     root.type = 2;
-
     int b = alloc_block();
     root.direct[0] = b;
-
     write_inode(0, &root);
 }
-
+//reads info about file from inode with file number
 void read_inode(int idx, inode_t* inode) {
     uint8_t buf[512];
     uint32_t block = g_superblock.inode_start + idx / INODES_PER_BLOCK;
     uint32_t offset = (idx % INODES_PER_BLOCK) * INODE_SIZE;
-
     block_read(block, buf);
     memcpy(inode, buf + offset, sizeof(inode_t));
 }
-
+//read_inode and then write back from RAM
 void write_inode(int idx, inode_t* inode) {
     uint8_t buf[512];
     uint32_t block = g_superblock.inode_start + idx / INODES_PER_BLOCK;
     uint32_t offset = (idx % INODES_PER_BLOCK) * INODE_SIZE;
-
     block_read(block, buf);
     memcpy(buf + offset, inode, sizeof(inode_t));
     block_write(block, buf);
 }
-
+//makes place for utilization → saves part of bitmap to RAM
 static uint8_t block_bitmap_static[BLOCK_BITMAP_MAX_SIZE];
 uint8_t *block_bitmap = block_bitmap_static;
-
+//loads bitmap to RAM on start
 void load_block_bitmap() {
     uint32_t bytes_left = block_bitmap_bytes;
     uint8_t tmp[SECTOR_SIZE];
@@ -178,7 +174,7 @@ void load_block_bitmap() {
         if (bytes_left > SECTOR_SIZE) bytes_left -= SECTOR_SIZE; else bytes_left = 0;
     }
 }
-
+//saves bitmap back from RAM
 void save_block_bitmap() {
     uint32_t bytes_left = block_bitmap_bytes;
     uint8_t tmp[SECTOR_SIZE];
@@ -192,13 +188,14 @@ void save_block_bitmap() {
         if (bytes_left > SECTOR_SIZE) bytes_left -= SECTOR_SIZE; else bytes_left = 0;
     }
 }
-
+//switch between master/slave
 void select_drive(uint16_t base, uint8_t slave) {
     current_ata_base = base;
     outb(base + ATA_REG_DRIVE, slave ? 0xB0 : 0xA0);
     for(int i=0; i<4; i++) inb(base + ATA_REG_STATUS);
+    //enables 400ms wait
 }
-
+//drive sends info about himself
 uint32_t ata_get_total_sectors() {
     uint16_t id[256];
     outb(current_ata_base + ATA_REG_DRIVE, 0xA0);
@@ -213,8 +210,10 @@ uint32_t ata_get_total_sectors() {
     insw(current_ata_base + ATA_REG_DATA, id, 256);
     return ((uint32_t)id[61] << 16) | id[60];
 }
-
+//big ass function
+//
 void init_fs() {
+//SEARCHES FOR DRIVE    
     current_ata_base = ATA_PRIMARY;
     uint32_t drive_sectors = ata_get_total_sectors();
     if (drive_sectors == 0) {
@@ -226,6 +225,7 @@ void init_fs() {
         klog("ERROR: No IDE drive found!");
         return;
     }
+//MAKES TEMPORARY SUPERBLOCK IN RAM
     superblock_t sb;
     uint8_t buf[SECTOR_SIZE];
     int i;
@@ -242,10 +242,10 @@ void init_fs() {
     sb.inode_start = sb.bitmap_start + block_bitmap_sectors + inode_bitmap_sectors;
     inode_table_blocks = (sb.inode_count + INODES_PER_BLOCK - 1) / INODES_PER_BLOCK;
     sb.data_start = sb.inode_start + inode_table_blocks;
+//READS LBA0 → MAKES FURTHER STEPT (FORMATTING/MOUNTING)
     block_read(0, buf);
     for (i = 0; i < (int)sizeof(sb); ++i)
         ((uint8_t*)&g_superblock)[i] = buf[i];
-
     if (g_superblock.magic != 0x5A4C534A) {
         for (i = 0; i < SECTOR_SIZE; ++i) buf[i] = 0;
         for (i = 0; i < (int)sizeof(sb); ++i) buf[i] = ((uint8_t*)&sb)[i];
@@ -298,22 +298,23 @@ void init_fs() {
         }
     }
 }
-
+//makes space for inodes
 uint8_t inode_bitmap[INODE_BITMAP_SIZE];
+//loads inodes to RAM
 void load_inode_bitmap() {
     uint32_t start = g_superblock.bitmap_start + block_bitmap_sectors;
     for (uint32_t i = 0; i < inode_bitmap_sectors; ++i) {
         block_read(start + i, inode_bitmap + i * SECTOR_SIZE);
     }
 }
-
+//saves inodes bitmap from RAM to drive
 void save_inode_bitmap() {
     uint32_t start = g_superblock.bitmap_start + block_bitmap_sectors;
     for (uint32_t i = 0; i < inode_bitmap_sectors; ++i) {
         block_write(start + i, inode_bitmap + i * SECTOR_SIZE);
     }
 }
-
+//allocates inode for new files, creates them their own number
 int alloc_inode() {
     for (uint32_t i = 0; i < g_superblock.inode_count; i++) {
         if (!(inode_bitmap[i / 8] & (1 << (i % 8)))) {
@@ -324,18 +325,18 @@ int alloc_inode() {
     }
     return -1;
 }
-
+//makes inode 1 → 0 and then writes it to drive with save_inode_bitmap
 void free_inode(int idx) {
     if (idx < 0 || (uint32_t)idx >= g_superblock.inode_count) return;
     inode_bitmap[idx / 8] &= ~(1 << (idx % 8));
     save_inode_bitmap();
 }
-
+//structure to make 4 bytes for inode num and 28 for name of inode ig
 struct dirent {
     uint32_t inode;
     char name[28];
 };
-
+//search engine, translates "name" to <inode number>
 int dir_lookup(inode_t* dir, const char* name) {
     if (dir->type != 2) return -1;
     
@@ -359,7 +360,7 @@ int dir_lookup(inode_t* dir, const char* name) {
     
     return -1;
 }
-
+//makes place for new file in inode table
 int dir_add(uint32_t dir_inode_id, inode_t* dir, const char* name, uint32_t inode_idx) {
     uint8_t buf[SECTOR_SIZE];
     for (int b = 0; b < 12; b++) {
@@ -387,7 +388,7 @@ int dir_add(uint32_t dir_inode_id, inode_t* dir, const char* name, uint32_t inod
     klog("ERROR: FULL, MAKE AN INDIRECT BLOCK SUPPORT");
     return -1;
 }
-
+//makes inode number → 0
 int dir_remove(inode_t* dir, const char* name) {
     if (dir->type != 2) return -1;
     uint8_t buf[SECTOR_SIZE];
@@ -406,7 +407,7 @@ int dir_remove(inode_t* dir, const char* name) {
     }
     return -1;
 }
-
+//makes new file with type = 1 (file) and size = 0
 uint32_t fs_create_file(const char* name, const char* main_tag) {
     if (!main_tag || strlen(main_tag) == 0) return (uint32_t)-1;
     int idx = alloc_inode();
@@ -431,7 +432,7 @@ uint32_t fs_create_file(const char* name, const char* main_tag) {
     dir_add(0, &root, name, (uint32_t)idx);
     return (uint32_t)idx;
 }
-
+//searches by metadata
 int fs_find_by_tag(const char* tag, uint32_t* results, int max_results) {
     int found_count = 0;
     inode_t temp_node;
@@ -449,7 +450,7 @@ int fs_find_by_tag(const char* tag, uint32_t* results, int max_results) {
     }
     return found_count;
 }
-
+//just write
 int fs_write(uint32_t inode_idx, const uint8_t* data, size_t len) {
     inode_t node;
     read_inode(inode_idx, &node);
@@ -488,7 +489,7 @@ int fs_write(uint32_t inode_idx, const uint8_t* data, size_t len) {
     }
     return (int)written;
 }
-
+//just read (mirror of write)
 int fs_read(uint32_t inode_idx, inode_t* node, uint32_t offset, uint32_t size, uint8_t* buffer) {
     uint32_t bytes_read = 0;
     uint8_t sector_buf[512];
@@ -515,7 +516,7 @@ int fs_read(uint32_t inode_idx, inode_t* node, uint32_t offset, uint32_t size, u
     }
     return bytes_read;
 }
-
+//deletes inode, block and directory name
 int fs_delete_file(const char* name) {
     inode_t root;
     read_inode(ROOT_INODE, &root);

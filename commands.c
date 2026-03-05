@@ -6,7 +6,6 @@
 #include <cpuid.h>
 #include "reboot.h"
 #include "diskinfo.h"
-#include "runtest.h"
 #include "fs.h"
 #include "library.h"
 #include "klog.h"
