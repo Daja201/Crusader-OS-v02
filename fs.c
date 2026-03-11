@@ -19,13 +19,14 @@
 #define ATA_CMD_WRITE 0x30
 #define SECTOR_SIZE 512
 #define INODE_TABLE_START 3
-#define INODE_SIZE 64
+#define INODE_SIZE 128
 #define INODES_PER_BLOCK (512 / INODE_SIZE)
 #define SUPERBLOCK_LBA 0
 #define BLOCK_BITMAP_LBA 1
 #define INODE_BITMAP_LBA 2
 #define INODE_TABLE_LBA 3
 #define ROOT_INODE 0
+#define PTRS_PER_BLOCK (SECTOR_SIZE / sizeof(uint32_t))
 //defines 16bit space for ATA_PRIMARY
 uint16_t current_ata_base = ATA_PRIMARY;
 //sends 1 byte of "val" into HW port
@@ -456,33 +457,22 @@ int fs_write(uint32_t inode_idx, const uint8_t* data, size_t len) {
     read_inode(inode_idx, &node);
     size_t written = 0;
     uint8_t buf[SECTOR_SIZE];
+
     while (written < len) {
         uint32_t block_index = written / SECTOR_SIZE;
         uint32_t offset_in_block = written % SECTOR_SIZE;
-        if (block_index >= 12) {
-            break; 
+        uint32_t phys_block = get_physical_block(inode_idx, &node, block_index, 1);
+        if (phys_block == 0) return -1; // volume full
+        if (offset_in_block > 0 || (len - written) < SECTOR_SIZE) {
+            block_read(phys_block, buf);
         }
-        if (node.direct[block_index] == 0) {
-            uint32_t new_block = alloc_block();
-            if (new_block == 0) {
-                return -1;
-            }
-            node.direct[block_index] = new_block;
-            write_inode(inode_idx, &node);
-            memset(buf, 0, SECTOR_SIZE);
-        } else {
-            block_read(node.direct[block_index], buf);
-        }
-        size_t space_in_sector = SECTOR_SIZE - offset_in_block;
-        size_t chunk_size = len - written;
-        if (chunk_size > space_in_sector) {
-            chunk_size = space_in_sector;
-        }
+        size_t chunk_size = SECTOR_SIZE - offset_in_block;
+        if (chunk_size > (len - written)) chunk_size = len - written;
         memcpy(buf + offset_in_block, data + written, chunk_size);
-        block_write(node.direct[block_index], buf);
-
+        block_write(phys_block, buf);
         written += chunk_size;
     }
+
     if (written > node.size) {
         node.size = (uint32_t)written;
         write_inode(inode_idx, &node);
@@ -490,48 +480,154 @@ int fs_write(uint32_t inode_idx, const uint8_t* data, size_t len) {
     return (int)written;
 }
 //just read (mirror of write)
-int fs_read(uint32_t inode_idx, inode_t* node, uint32_t offset, uint32_t size, uint8_t* buffer) {
+uint32_t fs_read(uint32_t inode_idx, inode_t* node, uint32_t offset, uint32_t size, uint8_t* buffer) {
     uint32_t bytes_read = 0;
     uint8_t sector_buf[512];
+
     if (offset + size > node->size) {
         size = node->size - offset;
     }
+
     while (bytes_read < size) {
         uint32_t current_global_offset = offset + bytes_read;
         uint32_t block_index = current_global_offset / 512;
         uint32_t offset_in_block = current_global_offset % 512;
-        if (block_index >= 12) break;
-        uint32_t block_addr = node->direct[block_index];
-        if (block_addr == 0) {
+        uint32_t phys_block = get_physical_block(inode_idx, node, block_index, 0);
+
+        if (phys_block == 0) {
             memset(sector_buf, 0, 512);
         } else {
-            block_read(block_addr, sector_buf);
+            block_read(phys_block, sector_buf);
         }
+
         uint32_t chunk_size = 512 - offset_in_block;
         if (chunk_size > (size - bytes_read)) {
             chunk_size = size - bytes_read;
         }
+
         memcpy(buffer + bytes_read, sector_buf + offset_in_block, chunk_size);
         bytes_read += chunk_size;
     }
     return bytes_read;
 }
-//deletes inode, block and directory name
+
+//frees indirect block, addon to delete_fie from inode map ig
+void free_indirect_tree(uint32_t block_lba, int depth) {
+    if (block_lba == 0) return;
+    if (depth > 0) {
+        uint32_t ptrs[PTRS_PER_BLOCK];
+        block_read(block_lba, (uint8_t*)ptrs);
+        for (int i = 0; i < PTRS_PER_BLOCK; i++) {
+            if (ptrs[i] != 0) {
+                free_indirect_tree(ptrs[i], depth - 1);
+            }
+        }
+    }
+    free_block(block_lba);
+}
+
+//deletes inode, block and directory name, also addon indirect and double indirect and triple indirect block
 int fs_delete_file(const char* name) {
     inode_t root;
     read_inode(ROOT_INODE, &root);
+    
     int inode_num = dir_lookup(&root, name);
-    if (inode_num < 0)
-        return -1;
+    if (inode_num < 0) {
+        return -1; //file not found
+    }
+    
     inode_t node;
     read_inode(inode_num, &node);
+
     for (int i = 0; i < INODE_DIRECT; i++) {
         if (node.direct[i] != 0) {
             free_block(node.direct[i]);
             node.direct[i] = 0;
         }
     }
+
+    if (node.single_indirect != 0) {
+        free_indirect_tree(node.single_indirect, 1);
+        node.single_indirect = 0;
+    }
+
+    if (node.double_indirect != 0) {
+        free_indirect_tree(node.double_indirect, 2);
+        node.double_indirect = 0;
+    }
+
+    if (node.triple_indirect != 0) {
+        free_indirect_tree(node.triple_indirect, 3);
+        node.triple_indirect = 0;
+    }
     free_inode(inode_num);
     dir_remove(&root, name);
+    
+    return 0;
+}
+
+// Pomocná funkce pro vynulování bloku na disku
+static void zero_block(uint32_t lba) {
+    uint8_t zbuf[SECTOR_SIZE] = {0};
+    block_write(lba, zbuf);
+}
+
+//LOGIC BLOCK → PHYSICAL NUMBER lba
+uint32_t get_physical_block(uint32_t inode_idx, inode_t* node, uint32_t logical_idx, int do_alloc) {
+    uint32_t ptrs[PTRS_PER_BLOCK];
+
+    if (logical_idx < INODE_DIRECT) {
+        if (node->direct[logical_idx] == 0 && do_alloc) {
+            node->direct[logical_idx] = alloc_block();
+            write_inode(inode_idx, node);
+        }
+        return node->direct[logical_idx];
+    }
+    logical_idx -= INODE_DIRECT;
+
+    if (logical_idx < PTRS_PER_BLOCK) {
+        if (node->single_indirect == 0 && do_alloc) {
+            node->single_indirect = alloc_block();
+            zero_block(node->single_indirect);
+            write_inode(inode_idx, node);
+        }
+        if (node->single_indirect == 0) return 0;
+        
+        block_read(node->single_indirect, (uint8_t*)ptrs);
+        if (ptrs[logical_idx] == 0 && do_alloc) {
+            ptrs[logical_idx] = alloc_block();
+            block_write(node->single_indirect, (uint8_t*)ptrs);
+        }
+        return ptrs[logical_idx];
+    }
+    logical_idx -= PTRS_PER_BLOCK;
+
+    uint32_t double_limit = PTRS_PER_BLOCK * PTRS_PER_BLOCK;
+    if (logical_idx < double_limit) {
+        if (node->double_indirect == 0 && do_alloc) {
+            node->double_indirect = alloc_block();
+            zero_block(node->double_indirect);
+            write_inode(inode_idx, node);
+        }
+        if (node->double_indirect == 0) return 0;
+        uint32_t l1_idx = logical_idx / PTRS_PER_BLOCK;
+        uint32_t l2_idx = logical_idx % PTRS_PER_BLOCK;
+        block_read(node->double_indirect, (uint8_t*)ptrs);
+        if (ptrs[l1_idx] == 0 && do_alloc) {
+            ptrs[l1_idx] = alloc_block();
+            zero_block(ptrs[l1_idx]);
+            block_write(node->double_indirect, (uint8_t*)ptrs);
+        }
+        if (ptrs[l1_idx] == 0) return 0;
+        uint32_t data_ptrs[PTRS_PER_BLOCK];
+        block_read(ptrs[l1_idx], (uint8_t*)data_ptrs);
+        if (data_ptrs[l2_idx] == 0 && do_alloc) {
+            data_ptrs[l2_idx] = alloc_block();
+            block_write(ptrs[l1_idx], (uint8_t*)data_ptrs);
+        }
+        return data_ptrs[l2_idx];
+    }
+    logical_idx -= double_limit;
+    //ADD TRIPPLE INDIRECT LOGIC
     return 0;
 }

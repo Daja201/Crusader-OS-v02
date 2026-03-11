@@ -1,7 +1,7 @@
 #ifndef TERMINAL_H
 #define TERMINAL_H
 
-#define CMD_BUF_SIZE 128
+#define CMD_BUF_SIZE 32768
 
 void terminal_init();
 void terminal_key(char c);

@@ -141,8 +141,12 @@ void cmd_read(int argc, char** argv) {
     }
     inode_t file_node;
     read_inode(inode_num, &file_node);
-    uint8_t buf[512];
-    int bytes_read = fs_read(inode_num, &file_node, 0, 512, buf);
+    uint8_t buf[32768];
+    uint32_t to_read = file_node.size;
+    if (to_read > sizeof(buf)) {
+        to_read = sizeof(buf); 
+    }
+    int bytes_read = fs_read(inode_num, &file_node, 0, to_read, buf);
     if (bytes_read <= 0) {
         klog("Error: Could not read file (or empty)");
         return;
@@ -158,7 +162,7 @@ void cmd_read(int argc, char** argv) {
 void cmd_ls(int argc, char** argv) {
     inode_t root;
     read_inode(0, &root); 
-    uint8_t buf[512];
+    uint8_t buf[32678];
     struct dirent {
         uint32_t inode;
         char name[28]; //4 + 28
@@ -184,6 +188,7 @@ void cmd_ls(int argc, char** argv) {
         }
     }
 }
+//delete func
 void cmd_dl(int argc, char** argv) {
     if (argc < 2) {
         klog("usage: dl <file>");

@@ -14,7 +14,6 @@ static unsigned char read_scancode(void)
     return inb(0x60);
 }
 
-/* partial set-1 map */
 static const char map[128] = {
     0, 27, '1','2','3','4','5','6','7','8','9','0','-','=','\b',
     '\t','q','w','e','r','t','y','u','i','o','p','[',']','\n',
@@ -27,14 +26,12 @@ char bios_getchar_echo(void)
     char c = 0;
     for (;;) {
         sc = read_scancode();
-        if (sc & 0x80) continue; /* ignore break codes */
+        if (sc & 0x80) continue;
         if (sc < sizeof(map)) c = map[sc];
         if (c == 0) continue;
         if (c == '\b') {
-            /* return backspace to caller so terminal can update its buffer and perform backspace */
             return '\b';
         }
-        /* echo and return */
         print_char(c);
         return c;
     }
