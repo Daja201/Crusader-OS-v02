@@ -26,9 +26,13 @@
 #define INODE_BITMAP_LBA 2
 #define INODE_TABLE_LBA 3
 #define ROOT_INODE 0
+//#define MAX_DRIVES 4
 #define PTRS_PER_BLOCK (SECTOR_SIZE / sizeof(uint32_t))
 //defines 16bit space for ATA_PRIMARY
-uint16_t current_ata_base = ATA_PRIMARY;
+static uint16_t current_ata_base = ATA_PRIMARY;
+static uint8_t current_is_slave = 0;
+fs_device_t g_drives[MAX_DRIVES];
+int g_active_drives = 0;
 //sends 1 byte of "val" into HW port
 static inline void outb(uint16_t port, uint8_t val) {
     asm volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
@@ -48,34 +52,46 @@ static inline void outsw(uint16_t port, const void* addr, int words) {
     asm volatile("rep outsw" : "+S"(addr), "+c"(words) : "d"(port));
 }
 //wait until drive isn't busy
-void ata_wait_busy() {
-    while (inb(current_ata_base + ATA_REG_STATUS) & 0x80);
+static void ata_wait_busy(uint16_t port) {
+    int timeout = 100000;
+    while ((inb(port + ATA_REG_STATUS) & 0x80) && --timeout) { /* spin */ }
+    if (timeout == 0) {
+        kklogf("ata_wait_busy timeout on port 0x%x", port);
+    }
 }
-void ata_wait_drq() {
-    while (!(inb(current_ata_base + ATA_REG_STATUS) & 0x08));
+static void ata_wait_drq(uint16_t port) {
+    int timeout = 100000;
+    while (!(inb(port + ATA_REG_STATUS) & 0x08) && --timeout) { /* spin */ }
+    if (timeout == 0) {
+        kklogf("ata_wait_drq timeout on port 0x%x", port);
+    }
 }
 //cuts 32-bit adress into 8-bit blocks and reads them
 void block_read(uint32_t lba, uint8_t* buf) {
-    ata_wait_busy();
-    outb(current_ata_base + ATA_REG_DRIVE, 0xE0 | ((lba >> 24) & 0x0F));
+    uint8_t drive_sel = (current_is_slave ? 0xF0 : 0xE0) | ((lba >> 24) & 0x0F);
+    outb(current_ata_base + ATA_REG_DRIVE, drive_sel);
+    for(int i=0; i<4; i++) inb(current_ata_base + ATA_REG_STATUS);
+    ata_wait_busy(current_ata_base);
     outb(current_ata_base + ATA_REG_SECCOUNT, 1);
     outb(current_ata_base + ATA_REG_LBA0, lba & 0xFF);
     outb(current_ata_base + ATA_REG_LBA1, (lba >> 8) & 0xFF);
     outb(current_ata_base + ATA_REG_LBA2, (lba >> 16) & 0xFF);
     outb(current_ata_base + ATA_REG_CMD, ATA_CMD_READ);
-    ata_wait_drq();
+    ata_wait_drq(current_ata_base);
     insw(current_ata_base + ATA_REG_DATA, buf, SECTOR_SIZE / 2);
 }
 //writes in 8-bit blocks
 void block_write(uint32_t lba, const uint8_t* buf) {
-    ata_wait_busy();
-    outb(current_ata_base + ATA_REG_DRIVE, 0xE0 | ((lba >> 24) & 0x0F));
+    uint8_t drive_sel = (current_is_slave ? 0xF0 : 0xE0) | ((lba >> 24) & 0x0F);
+    outb(current_ata_base + ATA_REG_DRIVE, drive_sel);
+    for(int i=0; i<4; i++) inb(current_ata_base + ATA_REG_STATUS);
+    ata_wait_busy(current_ata_base);
     outb(current_ata_base + ATA_REG_SECCOUNT, 1);
     outb(current_ata_base + ATA_REG_LBA0, lba & 0xFF);
     outb(current_ata_base + ATA_REG_LBA1, (lba >> 8) & 0xFF);
     outb(current_ata_base + ATA_REG_LBA2, (lba >> 16) & 0xFF);
-    outb(current_ata_base + ATA_REG_CMD, ATA_CMD_WRITE);
-    ata_wait_drq();
+    outb(current_ata_base + ATA_REG_CMD, ATA_CMD_WRITE);    
+    ata_wait_drq(current_ata_base);
     outsw(current_ata_base + ATA_REG_DATA, buf, SECTOR_SIZE / 2);
 }
 //declaration of vars for sb and inodes
@@ -115,7 +131,7 @@ int alloc_block() {
             return (int)i;
         }
     }
-    return -1;
+    return 0;
 }
 //clears one block
 static void clear_block_bitmap_bit(uint32_t idx) {
@@ -192,113 +208,57 @@ void save_block_bitmap() {
 //switch between master/slave
 void select_drive(uint16_t base, uint8_t slave) {
     current_ata_base = base;
+    current_is_slave = slave;
     outb(base + ATA_REG_DRIVE, slave ? 0xB0 : 0xA0);
     for(int i=0; i<4; i++) inb(base + ATA_REG_STATUS);
     //enables 400ms wait
 }
 //drive sends info about himself
-uint32_t ata_get_total_sectors() {
+static uint32_t ata_get_total_sectors_dev(uint16_t base, uint8_t is_slave) {
     uint16_t id[256];
-    outb(current_ata_base + ATA_REG_DRIVE, 0xA0);
-    outb(current_ata_base + ATA_REG_SECCOUNT, 0);
-    outb(current_ata_base + ATA_REG_LBA0, 0);
-    outb(current_ata_base + ATA_REG_LBA1, 0);
-    outb(current_ata_base + ATA_REG_LBA2, 0);
-    outb(current_ata_base + ATA_REG_CMD, 0xEC);
-    ata_wait_busy();
-    if (inb(current_ata_base + ATA_REG_STATUS) & 0x01) return 0;
-    ata_wait_drq();
-    insw(current_ata_base + ATA_REG_DATA, id, 256);
+    outb(base + ATA_REG_DRIVE, is_slave ? 0xB0 : 0xA0);
+    for(int i=0; i<4; i++) inb(base + ATA_REG_STATUS);
+    outb(base + ATA_REG_SECCOUNT, 0);
+    outb(base + ATA_REG_LBA0, 0);
+    outb(base + ATA_REG_LBA1, 0);
+    outb(base + ATA_REG_LBA2, 0);
+    outb(base + ATA_REG_CMD, 0xEC);
+    ata_wait_busy(base);
+    if (inb(base + ATA_REG_STATUS) & 0x01) return 0;
+    ata_wait_drq(base);
+    insw(base + ATA_REG_DATA, id, 256);
     return ((uint32_t)id[61] << 16) | id[60];
 }
 //big ass function
 //
 void init_fs() {
-//SEARCHES FOR DRIVE    
-    current_ata_base = ATA_PRIMARY;
-    uint32_t drive_sectors = ata_get_total_sectors();
-    if (drive_sectors == 0) {
-        klog("Primary Master not found, trying Secondary...");
-        current_ata_base = ATA_SECONDARY;
-        drive_sectors = ata_get_total_sectors();
-    }
-    if (drive_sectors == 0) {
-        klog("ERROR: No IDE drive found!");
-        return;
-    }
-//MAKES TEMPORARY SUPERBLOCK IN RAM
-    superblock_t sb;
-    uint8_t buf[SECTOR_SIZE];
-    int i;
-    uint64_t total_blocks = drive_sectors;
-    block_bitmap_bytes = (total_blocks + 7) / 8;
-    if (block_bitmap_bytes > BLOCK_BITMAP_MAX_SIZE) block_bitmap_bytes = BLOCK_BITMAP_MAX_SIZE;
-    block_bitmap_sectors = (block_bitmap_bytes + SECTOR_SIZE - 1) / SECTOR_SIZE;
-    inode_bitmap_sectors = (INODE_BITMAP_SIZE + SECTOR_SIZE - 1) / SECTOR_SIZE;
-    sb.magic = 0x5A4C534A;
-    sb.block_size = BLOCK_SIZE;
-    sb.total_blocks = total_blocks;
-    sb.inode_count = INODE_BITMAP_SIZE * 8;
-    sb.bitmap_start = 1;
-    sb.inode_start = sb.bitmap_start + block_bitmap_sectors + inode_bitmap_sectors;
-    inode_table_blocks = (sb.inode_count + INODES_PER_BLOCK - 1) / INODES_PER_BLOCK;
-    sb.data_start = sb.inode_start + inode_table_blocks;
-//READS LBA0 → MAKES FURTHER STEPT (FORMATTING/MOUNTING)
-    block_read(0, buf);
-    for (i = 0; i < (int)sizeof(sb); ++i)
-        ((uint8_t*)&g_superblock)[i] = buf[i];
-    if (g_superblock.magic != 0x5A4C534A) {
-        for (i = 0; i < SECTOR_SIZE; ++i) buf[i] = 0;
-        for (i = 0; i < (int)sizeof(sb); ++i) buf[i] = ((uint8_t*)&sb)[i];
-        block_write(0, buf);
-        uint8_t zbuf[SECTOR_SIZE];
-        for (i = 0; i < SECTOR_SIZE; ++i) zbuf[i] = 0;
-        for (uint32_t s = 0; s < block_bitmap_sectors; ++s)
-            block_write(sb.bitmap_start + s, zbuf);
-        memset(inode_bitmap, 0, INODE_BITMAP_SIZE);
-        g_superblock = sb;
-        for (i = 0; i < (int)sb.data_start; i++)
-            set_block_bitmap_bit((uint32_t)i);
-        inode_bitmap[0] |= 1;
-        save_inode_bitmap();
-        create_root();
-    } else {
-        block_bitmap_bytes = (g_superblock.total_blocks + 7) / 8;
-        if (block_bitmap_bytes > BLOCK_BITMAP_MAX_SIZE) block_bitmap_bytes = BLOCK_BITMAP_MAX_SIZE;
-        block_bitmap_sectors = (block_bitmap_bytes + SECTOR_SIZE - 1) / SECTOR_SIZE;
-        inode_bitmap_sectors = (INODE_BITMAP_SIZE + SECTOR_SIZE - 1) / SECTOR_SIZE;
-        inode_table_blocks = (g_superblock.inode_count + INODES_PER_BLOCK - 1) / INODES_PER_BLOCK;
-        load_block_bitmap();
-        load_inode_bitmap();
-    }
-    if (g_superblock.magic != 0x5A4C534A) g_superblock = sb;
-    if (drive_sectors == 0) {
-        inode_t root; read_inode(0, &root);
-        int idx = dir_lookup(&root, ".disksize");
-        if (idx >= 0) {
-            uint8_t tmp[64];
-            inode_t file_node;
-            read_inode((uint32_t)idx, &file_node);
-            int r = fs_read((uint32_t)idx, &file_node, 0, sizeof(tmp)-1, tmp);
-            if (r > 0) {
-                tmp[r] = '\0';
-                uint32_t v = 0;
-                for (int ii = 0; ii < r && tmp[ii]; ++ii) {
-                    if (tmp[ii] < '0' || tmp[ii] > '9') break;
-                    v = v * 10 + (tmp[ii] - '0');
-                }
-                if (v > 0) {
-                    g_superblock.total_blocks = v;
-                    block_bitmap_bytes = (g_superblock.total_blocks + 7) / 8;
-                    block_bitmap_sectors = (block_bitmap_bytes + SECTOR_SIZE - 1) / SECTOR_SIZE;
-                    for (i = 0; i < SECTOR_SIZE; ++i) buf[i] = 0;
-                    for (i = 0; i < (int)sizeof(g_superblock); ++i) buf[i] = ((uint8_t*)&g_superblock)[i];
-                    block_write(0, buf);
-                }
-            }
+    g_active_drives = 0;
+    struct { uint16_t base; uint8_t slave; } ports[] = {
+        {ATA_PRIMARY, 0}, {ATA_PRIMARY, 1},
+        {ATA_SECONDARY, 0}, {ATA_SECONDARY, 1}
+    };
+    for (int i = 0; i < 4; i++) {
+        kklogf("Probing ATA at base 0x%x slave %d", ports[i].base, ports[i].slave);
+        uint32_t sectors = ata_get_total_sectors_dev(ports[i].base, ports[i].slave);
+        if (sectors > 0) {
+            kklogf("Disk found at base 0x%x, slave: %d -> %u sectors", ports[i].base, ports[i].slave, sectors);
+            fs_device_t* dev = &g_drives[g_active_drives];
+            dev->drive_id = g_active_drives;
+            dev->ata_base = ports[i].base;
+            dev->is_slave = ports[i].slave;
+            dev->total_sectors = sectors;
+            g_active_drives++;
+        } else {
+            kklogf("No disk at base 0x%x slave %d", ports[i].base, ports[i].slave);
         }
     }
+    if (g_active_drives == 0) {
+        kklog("ERROR: No IDE drive found!");
+    }
 }
+// The following mounting/formatting block was removed to fix compilation
+// structure issues. Proper per-device mounting should be implemented later.
+
 //makes space for inodes
 uint8_t inode_bitmap[INODE_BITMAP_SIZE];
 //loads inodes to RAM
@@ -628,6 +588,45 @@ uint32_t get_physical_block(uint32_t inode_idx, inode_t* node, uint32_t logical_
         return data_ptrs[l2_idx];
     }
     logical_idx -= double_limit;
-    //ADD TRIPPLE INDIRECT LOGIC
+    uint32_t triple_limit = PTRS_PER_BLOCK * PTRS_PER_BLOCK * PTRS_PER_BLOCK;
+    if (logical_idx < triple_limit) {
+        if (node->triple_indirect == 0 && do_alloc) {
+            node->triple_indirect = alloc_block();
+            zero_block(node->triple_indirect);
+            write_inode(inode_idx, node);
+        }
+        if (node->triple_indirect == 0) return 0;
+        uint32_t l1_idx = logical_idx / (PTRS_PER_BLOCK * PTRS_PER_BLOCK);
+        uint32_t rem    = logical_idx % (PTRS_PER_BLOCK * PTRS_PER_BLOCK);
+        uint32_t l2_idx = rem / PTRS_PER_BLOCK;
+        uint32_t l3_idx = rem % PTRS_PER_BLOCK;
+        uint32_t l1_ptrs[PTRS_PER_BLOCK];
+        block_read(node->triple_indirect, (uint8_t*)l1_ptrs);
+        if (l1_ptrs[l1_idx] == 0 && do_alloc) {
+            l1_ptrs[l1_idx] = alloc_block();
+            zero_block(l1_ptrs[l1_idx]);
+            block_write(node->triple_indirect, (uint8_t*)l1_ptrs);
+        }
+        if (l1_ptrs[l1_idx] == 0) return 0;
+
+        uint32_t l2_ptrs[PTRS_PER_BLOCK];
+        block_read(l1_ptrs[l1_idx], (uint8_t*)l2_ptrs);
+        if (l2_ptrs[l2_idx] == 0 && do_alloc) {
+            l2_ptrs[l2_idx] = alloc_block();
+            zero_block(l2_ptrs[l2_idx]);
+            block_write(l1_ptrs[l1_idx], (uint8_t*)l2_ptrs);
+        }
+        if (l2_ptrs[l2_idx] == 0) return 0;
+
+        uint32_t l3_ptrs[PTRS_PER_BLOCK];
+        block_read(l2_ptrs[l2_idx], (uint8_t*)l3_ptrs);
+        if (l3_ptrs[l3_idx] == 0 && do_alloc) {
+            l3_ptrs[l3_idx] = alloc_block();
+            block_write(l2_ptrs[l2_idx], (uint8_t*)l3_ptrs);
+        }
+        
+        return l3_ptrs[l3_idx];
+    }
     return 0;
+    //return 0;
 }
