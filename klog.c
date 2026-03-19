@@ -163,8 +163,8 @@ void kklogf(const char *fmt, ...) {
             case 'x': {
                 int v = va_arg(args, int);
                 itoa(v, buf, 16);
-                kklog("0x");
-                serial_write("0x");
+                //kklog("0x");
+                //serial_write("0x");
                 kklog(buf);
                 serial_write(buf);
                 break;

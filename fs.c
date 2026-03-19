@@ -52,19 +52,15 @@ static inline void outsw(uint16_t port, const void* addr, int words) {
     asm volatile("rep outsw" : "+S"(addr), "+c"(words) : "d"(port));
 }
 //wait until drive isn't busy
-static void ata_wait_busy(uint16_t port) {
-    int timeout = 100000;
-    while ((inb(port + ATA_REG_STATUS) & 0x80) && --timeout) { /* spin */ }
-    if (timeout == 0) {
-        kklogf("ata_wait_busy timeout on port 0x%x", port);
-    }
+int ata_wait_busy(uint16_t base) {
+    uint32_t timeout = 1000000;
+    while ((inb(base + 7) & 0x80) && --timeout);
+    return (timeout == 0) ? -1 : 0;
 }
-static void ata_wait_drq(uint16_t port) {
-    int timeout = 100000;
-    while (!(inb(port + ATA_REG_STATUS) & 0x08) && --timeout) { /* spin */ }
-    if (timeout == 0) {
-        kklogf("ata_wait_drq timeout on port 0x%x", port);
-    }
+int ata_wait_drq(uint16_t base) {
+    uint32_t timeout = 1000000;
+    while (!(inb(base + 7) & 0x08) && --timeout);
+    return (timeout == 0) ? -1 : 0;
 }
 //cuts 32-bit adress into 8-bit blocks and reads them
 void block_read(uint32_t lba, uint8_t* buf) {
@@ -223,41 +219,50 @@ static uint32_t ata_get_total_sectors_dev(uint16_t base, uint8_t is_slave) {
     outb(base + ATA_REG_LBA1, 0);
     outb(base + ATA_REG_LBA2, 0);
     outb(base + ATA_REG_CMD, 0xEC);
-    ata_wait_busy(base);
+    uint8_t status = inb(base + ATA_REG_STATUS);
+    if (status == 0x00 || status == 0xFF) return 0;
+    if (ata_wait_busy(base) < 0) return 0;
     if (inb(base + ATA_REG_STATUS) & 0x01) return 0;
-    ata_wait_drq(base);
+    if (ata_wait_drq(base) < 0) return 0;
     insw(base + ATA_REG_DATA, id, 256);
     return ((uint32_t)id[61] << 16) | id[60];
 }
+
 //big ass function
 //
+
+
+// In your driver file
 void init_fs() {
     g_active_drives = 0;
-    struct { uint16_t base; uint8_t slave; } ports[] = {
-        {ATA_PRIMARY, 0}, {ATA_PRIMARY, 1},
-        {ATA_SECONDARY, 0}, {ATA_SECONDARY, 1}
-    };
-    for (int i = 0; i < 4; i++) {
-        kklogf("Probing ATA at base 0x%x slave %d", ports[i].base, ports[i].slave);
-        uint32_t sectors = ata_get_total_sectors_dev(ports[i].base, ports[i].slave);
-        if (sectors > 0) {
-            kklogf("Disk found at base 0x%x, slave: %d -> %u sectors", ports[i].base, ports[i].slave, sectors);
-            fs_device_t* dev = &g_drives[g_active_drives];
-            dev->drive_id = g_active_drives;
-            dev->ata_base = ports[i].base;
-            dev->is_slave = ports[i].slave;
-            dev->total_sectors = sectors;
-            g_active_drives++;
-        } else {
-            kklogf("No disk at base 0x%x slave %d", ports[i].base, ports[i].slave);
+    uint16_t ports[] = { 0x1F0, 0x170 };
+
+    for (int p = 0; p < 2; p++) {
+        for (int s = 0; s < 2; s++) {
+            uint16_t base = ports[p];
+            
+            // 1. QUICK CHECK: Floating Bus?
+            if (inb(base + 7) == 0xFF) continue;
+
+            // 2. IDENTIFY: Get sectors
+            uint32_t sectors = ata_get_total_sectors_dev(base, s);
+
+            // 3. VALIDATE: Only if sectors is a sane number
+            if (sectors > 0 && sectors < 0xFFFFFFF) { 
+                // Don't use kklogf for now if it's broken, use a simpler print if you have it
+                kklogf("Found Disk on 0x%x Slave %d", (uint32_t)base, (uint32_t)s);
+                
+                g_drives[g_active_drives].ata_base = base;
+                g_drives[g_active_drives].is_slave = s;
+                g_drives[g_active_drives].total_sectors = sectors;
+                g_active_drives++;
+            }
         }
     }
-    if (g_active_drives == 0) {
-        kklog("ERROR: No IDE drive found!");
-    }
+    // Final count check
+    if (g_active_drives > 4) g_active_drives = 0; // Emergency reset if logic fails
 }
-// The following mounting/formatting block was removed to fix compilation
-// structure issues. Proper per-device mounting should be implemented later.
+
 
 //makes space for inodes
 uint8_t inode_bitmap[INODE_BITMAP_SIZE];
