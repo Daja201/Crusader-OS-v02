@@ -31,6 +31,7 @@ void kmain() {
     int hour, min, sec;
     rtc_get_datetime(&year, &month, &day, &hour, &min, &sec);
     char b[8];
+    klog("");
     klog("RTC: ");
     itoa(year, b, 10); kklog(b);;itoa(month, b, 10);kklog(" "); kklog(b);itoa(day, b, 10);kklog(" "); kklog(b); kklog(" ");
     itoa(hour, b, 10); kklog(b); kklog(":");
