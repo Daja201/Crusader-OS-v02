@@ -11,8 +11,8 @@ LD_FLAGS = -m elf_i386 -T link.ld
 
 # files
 ASM = loader.s
-C_SRC = kernel.c vga.c klog.c bioskbd.c terminal.c commands.c string.c reboot.c fs.c diskinfo.c  library.c libdiv.c rtc.c
-OBJ = loader.o kernel.o vga.o klog.o bioskbd.o terminal.o commands.o string.o reboot.o fs.o diskinfo.o  library.o libdiv.o rtc.o
+C_SRC = kernel.c vga.c vga13.c vesa.c bootinfo.c klog.c bioskbd.c terminal.c commands.c string.c reboot.c fs.c diskinfo.c  library.c libdiv.c rtc.c
+OBJ = loader.o kernel.o vga.o vga13.o vesa.o bootinfo.o klog.o bioskbd.o terminal.o commands.o string.o reboot.o fs.o diskinfo.o  library.o libdiv.o rtc.o
 ISO_DIR = iso
 GRUB_DIR = $(ISO_DIR)/boot/grub
 STAGE2 = ./stage2_eltorito
@@ -34,6 +34,9 @@ kernel.o: kernel.c
 vga.o: vga.c
 	$(CC) $(CFLAGS) vga.c -o vga.o
 
+vga13.o: vga13.c vga13.h
+	$(CC) $(CFLAGS) vga13.c -o vga13.o
+
 klog.o: klog.c
 	$(CC) $(CFLAGS) klog.c -o klog.o
 
@@ -46,34 +49,38 @@ libdiv.o: libdiv.c
 # link kernel
 kernel.elf: $(OBJ)
 	$(LD) $(LD_FLAGS) $(OBJ) -o $(KERNEL)
-
-# build ISO
+#iso build
 $(ISO): $(KERNEL)
-	mkdir -p $(GRUB_DIR)
-	cp $(STAGE2) $(GRUB_DIR)/
-	cp $(MENU) $(GRUB_DIR)/
+	rm -rf $(ISO_DIR)
+	mkdir -p $(ISO_DIR)/boot/grub
 	cp $(KERNEL) $(ISO_DIR)/boot/
-# mkdir -p iso/modules
+	echo "set timeout=5" > $(ISO_DIR)/boot/grub/grub.cfg
+	echo "insmod all_video" >> $(ISO_DIR)/boot/grub/grub.cfg
+	echo "set default=1" >> $(ISO_DIR)/boot/grub/grub.cfg
+	
+	#TEXT MODE
+	echo "menuentry 'Crusader OS (Text Mode)' {" >> $(ISO_DIR)/boot/grub/grub.cfg
+	echo "  set gfxpayload=text" >> $(ISO_DIR)/boot/grub/grub.cfg            # Vnutí GRUBu textový režim
+	echo "  multiboot /boot/kernel.elf text" >> $(ISO_DIR)/boot/grub/grub.cfg # Předá kernelu parametr 'text'
+	echo "  boot" >> $(ISO_DIR)/boot/grub/grub.cfg
+	echo "}" >> $(ISO_DIR)/boot/grub/grub.cfg
 
-	$(GENISO) -R \
-	 -b boot/grub/$(notdir $(STAGE2)) \
-	 -no-emul-boot \
-	 -boot-load-size 4 \
-	 -A os \
-	 -input-charset utf8 \
-	 -quiet \
-	 -boot-info-table \
-	 -o $(ISO) $(ISO_DIR)
-
+	#GRAPHICAL MODE
+	echo "menuentry 'Crusader OS (Graphical Mode)' {" >> $(ISO_DIR)/boot/grub/grub.cfg
+	echo "  set gfxpayload=800x600x32" >> $(ISO_DIR)/boot/grub/grub.cfg
+	echo "  multiboot /boot/kernel.elf" >> $(ISO_DIR)/boot/grub/grub.cfg
+	echo "  boot" >> $(ISO_DIR)/boot/grub/grub.cfg
+	echo "}" >> $(ISO_DIR)/boot/grub/grub.cfg
+	grub-mkrescue -o $(ISO) $(ISO_DIR)
+	
+	echo "MAKE HAS DONE EVERYTHING FOR YOU, DRIVE SIZE: 128MB"
 # clean
 clean:
 	rm -f *.o $(KERNEL) $(ISO)
 	rm -rf $(ISO_DIR)
-
 # run
 run:
-	qemu-system-i386 -cdrom os.iso -drive file=disk.img,format=raw,index=0,media=disk -m 512M -serial stdio
-#tryna make auto dd
+	qemu-system-i386 -cdrom os.iso -drive file=disk.img,format=raw,index=0,media=disk -m 512M -vga std -serial stdio
 dd32:
 	dd if=/dev/zero of=disk.img bs=1M count=32 status=progress
 dd128:

@@ -5,7 +5,7 @@ extern kmain
 ; VARIABLES:
 
 MAGIC_NUMBER      equ 0x1BADB002
-FLAGS             equ 0x0
+FLAGS             equ (1<<0) | (1<<1) | (1<<2)   ; Bit 2 is REQUIRED for video mode
 CHECKSUM          equ -(MAGIC_NUMBER + FLAGS)
 KERNEL_STACK_SIZE equ 65536
 
@@ -16,6 +16,19 @@ section .multiboot
     dd MAGIC_NUMBER
     dd FLAGS
     dd CHECKSUM
+    
+    ; Address kludge fields (5 of them, required by GRUB if Bit 2 is set)
+    dd 0
+    dd 0
+    dd 0
+    dd 0
+    dd 0 
+    
+; Video mode setup
+    dd 0    ; 0 = Lineární grafický režim (ZDE BYLA CHYBA!)
+    dd 1600  ; Width
+    dd 900  ; Height
+    dd 32   ; Depth
 
 section .bss
     align 16
@@ -29,8 +42,11 @@ loader:
     lea esp, [kernel_stack + KERNEL_STACK_SIZE]
     mov ebp, esp
 
-    ; calling C file part kmain
+    ; call kmain(mb_magic, mb_info)
+    push ebx    ; mb_info
+    push eax    ; mb_magic
     call kmain
+    add esp, 8
 
     ;kills cpu if kmain comes back lol
 
@@ -40,4 +56,3 @@ loader:
     jmp .hang
 
 section .note.GNU-stack
-

@@ -11,5 +11,10 @@ void vga_init();
 void vga_backspace();
 void vga_center();
 void vga_scroll_to_bottom();
+/* from bootinfo and vesa */
+extern int boot_has_fb;
+
+#include "bootinfo.h"
+#include "vesa.h"
 
 #endif
