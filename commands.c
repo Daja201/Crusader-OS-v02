@@ -1,6 +1,7 @@
 #include "commands.h"
 #include "terminal.h"
 #include "vga.h"
+#include "vga13.h"
 #include <string.h>
 #include <stdio.h>
 #include <cpuid.h>
@@ -235,6 +236,18 @@ void cmd_time(int argc, char** argv) {
     itoa(sec, b, 10); klog(b);
 }
 
+void cmd_gui(int argc, char** argv) {
+    /* Prefer VESA LFB if available */
+    if (boot_has_fb) {
+        vesa_init_from_params(boot_fb_addr, boot_fb_width, boot_fb_height, boot_fb_bpp, boot_fb_pitch);
+        vesa_demo();
+    } else {
+        /* fallback to mode13 demo if bootloader set it */
+        vga13_init();
+        vga13_demo();
+    }
+}
+
 void cmd_find(int argc, char** argv) {
     if (argc < 2) {
         kklogf("usage: find <tag>\n");
@@ -269,6 +282,7 @@ command_t commands[] = {
     {"wr", cmd_wr},
     {"dl", cmd_dl},
     {"time", cmd_time}
+    ,{"gui", cmd_gui}
 };
 //
 int command_count = sizeof(commands)/sizeof(command_t);
