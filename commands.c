@@ -13,6 +13,7 @@
 #include "string.h"
 #include "fs.h"
 #include "rtc.h"
+#include "vesa.h"
 // pure commands inside lore lol <3
 
 void cmd_help(int argc, char** argv) {
@@ -171,6 +172,8 @@ void cmd_ls(int argc, char** argv) {
     };
     int entry_count = 512 / sizeof(struct dirent);
     klog("Files in root directory:");
+    //klog("777");
+
     for (int b = 0; b < 12; b++) {
         uint32_t block_lba = root.direct[b];
         if (block_lba == 0) break; 
@@ -179,12 +182,12 @@ void cmd_ls(int argc, char** argv) {
         for (int i = 0; i < entry_count; i++) {
             if (entries[i].inode != 0) {
                 inode_t file_node;
-                read_inode(entries[i].inode, &file_node);
-                print_string("  ");
-                print_string(entries[i].name);
-                print_string(" - ");
-                print_string(file_node.main_tag);
-                print_string("\n");
+                klog("  ");
+                klog(entries[i].name);
+                klog(" - ");
+                klog(file_node.main_tag);
+                klog("\n");
+                //CHRIST IS MESSIAH
             }
         }
     }
@@ -212,7 +215,7 @@ void cmd_wr(int argc, char** argv) {
     const char* data = argv[2];
     //NEEDS TO CREATE INODE before wiritng in it
     uint32_t inode = fs_create_file(filename, wr);
-    if (inode == 0) {
+    if ((int32_t)inode < 0) {
         klog("file creation failed");
         return;
     }
@@ -248,6 +251,10 @@ void cmd_gui(int argc, char** argv) {
     }
 }
 
+void cmd_format(int argc, char** argv) {
+    format_fs();
+}
+
 void cmd_find(int argc, char** argv) {
     if (argc < 2) {
         kklogf("usage: find <tag>\n");
@@ -281,8 +288,9 @@ command_t commands[] = {
     {"lib", cmd_lib},
     {"wr", cmd_wr},
     {"dl", cmd_dl},
-    {"time", cmd_time}
-    ,{"gui", cmd_gui}
+    {"time", cmd_time},
+    {"gui", cmd_gui},
+    {"format", cmd_format}
 };
 //
 int command_count = sizeof(commands)/sizeof(command_t);

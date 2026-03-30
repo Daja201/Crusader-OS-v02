@@ -8,7 +8,6 @@
 #include "string.h"
 
 void kmain(unsigned long mb_magic, unsigned long mb_info) {
-    
     parse_multiboot((uint32_t)mb_magic, (uint32_t)mb_info);
     uint32_t mb_flags = *(uint32_t*)mb_info;
     if (mb_flags & 4) {
@@ -25,7 +24,8 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
     //
 
     vga_init();
-
+    vesa_init_from_params(boot_fb_addr, boot_fb_width, boot_fb_height, boot_fb_bpp, boot_fb_pitch);
+    
     /*if (boot_has_fb) {
         klog("Framebuffer detected by bootloader:");
         kklogf(" addr=0x%lx", boot_fb_addr);
@@ -35,7 +35,7 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
     }
     */
 
-    terminal_init();
+    //terminal_init();
     //klog("BOOT OK");
     //
     extern uint8_t *block_bitmap;
@@ -45,17 +45,16 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
     int hour, min, sec;
     rtc_get_datetime(&year, &month, &day, &hour, &min, &sec);
     char b[8];
-    /*klog("");
+    /*klog(""); */
     klog("RTC: ");
-    itoa(year, b, 10); kklog(b);;itoa(month, b, 10);kklog(" "); kklog(b);itoa(day, b, 10);kklog(" "); kklog(b); kklog(" ");
-    itoa(hour, b, 10); kklog(b); kklog(":");
-    itoa(min, b, 10); kklog(b); kklog(":"); 
-    itoa(sec, b, 10); klog(b);
-    //vesa_init_from_params(boot_fb_addr, boot_fb_width, boot_fb_height, boot_fb_bpp, boot_fb_pitch);
+    itoa(year, b, 10); klog(b);;itoa(month, b, 10);klog(" "); klog(b);itoa(day, b, 10);klog(" "); klog(b); klog(" ");
+    itoa(hour, b, 10); klog(b); klog(":");
+    itoa(min, b, 10); klog(b); klog(":"); 
+    itoa(sec, b, 10); kklog(b);
+    /*vesa_init_from_params(boot_fb_addr, boot_fb_width, boot_fb_height, boot_fb_bpp, boot_fb_pitch);
     */
 
-    if (boot_has_fb) {    
-        vesa_init_from_params(boot_fb_addr, boot_fb_width, boot_fb_height, boot_fb_bpp, boot_fb_pitch);
+    //if (boot_has_fb) {    
     
         /*  vesa_init_from_params(boot_fb_addr, boot_fb_width, boot_fb_height, boot_fb_bpp, boot_fb_pitch);
         for (int y = 0; y < boot_fb_height; y++) {
@@ -64,11 +63,14 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
             }
         } */
 
-        //klog("Framebuffer detected by bootloader:");
-        //vesa_draw_char('N', 100, 100, 0xFFFFFF, 0x0000FF);
-        klog("CD");
+    //kklog("FRAMEBUFFER DETECTED");
+    kklog("KERNEL BOOT OKAY");
+    kklog("WELCOME TO CRUSADER OS");
 
-    }
+        //rectannle lol /*
+    /*vga13_fill_rect(10, 10, 1000, 1000, 15);
+    vga13_swap_buffers(); 
+    //} */
 
     for (;;) {
         char c = bios_getchar_echo();

@@ -5,9 +5,9 @@
 static char cmd_buf[CMD_BUF_SIZE];
 static int cmd_len = 0;
 
-void terminal_init() {
+/* void terminal_init() {
     klog("Crusader>>> ");
-}
+} */
 void execute_command(char* line) {
     char* argv[8];
     int argc = 0;

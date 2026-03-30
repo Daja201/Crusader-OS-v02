@@ -1,11 +1,6 @@
-not 512B about keyboard driver
 proglang
-graphics
 txt editor
+double buffer VESA
+renderer api - draw into vesa
 
--- finished --
-fs_delete_file
-writing via wr command just plain some text
-write another something to lib
-not only 16 files
-not 512B adressers
+drive error
