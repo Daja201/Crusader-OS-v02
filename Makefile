@@ -11,8 +11,8 @@ LD_FLAGS = -m elf_i386 -T link.ld
 
 # files
 ASM = loader.s
-C_SRC = kernel.c vga.c vga13.c vesa.c bootinfo.c klog.c bioskbd.c terminal.c commands.c string.c reboot.c fs.c diskinfo.c  library.c libdiv.c rtc.c
-OBJ = loader.o kernel.o vga.o vga13.o vesa.o bootinfo.o klog.o bioskbd.o terminal.o commands.o string.o reboot.o fs.o diskinfo.o  library.o libdiv.o rtc.o
+C_SRC = kernel.c vga.c vga13.c vesa.c bootinfo.c klog.c bioskbd.c terminal.c commands.c string.c reboot.c fs.c diskinfo.c  library.c libdiv.c rtc.c font.c
+OBJ = loader.o kernel.o vga.o vga13.o vesa.o bootinfo.o klog.o bioskbd.o terminal.o commands.o string.o reboot.o fs.o diskinfo.o  library.o libdiv.o rtc.o font.o
 ISO_DIR = iso
 GRUB_DIR = $(ISO_DIR)/boot/grub
 STAGE2 = ./stage2_eltorito
@@ -40,11 +40,13 @@ vga13.o: vga13.c vga13.h
 klog.o: klog.c
 	$(CC) $(CFLAGS) klog.c -o klog.o
 
-bioskbd.o: bioskbd.c bioskbd.h vga.h
+bioskbd.o: bioskbd.c bioskbd.h vga.h 
 	$(CC) $(CFLAGS) bioskbd.c -o bioskbd.o
 
 libdiv.o: libdiv.c
 	$(CC) $(CFLAGS) libdiv.c -o libdiv.o
+font.o: font.c
+	$(CC) $(CFLAGS) font.c -o font.o
 
 # link kernel
 kernel.elf: $(OBJ)
@@ -59,15 +61,16 @@ $(ISO): $(KERNEL)
 	echo "set default=1" >> $(ISO_DIR)/boot/grub/grub.cfg
 	
 	#TEXT MODE
-	echo "menuentry 'Crusader OS (Text Mode)' {" >> $(ISO_DIR)/boot/grub/grub.cfg
-	echo "  set gfxpayload=text" >> $(ISO_DIR)/boot/grub/grub.cfg            # Vnutí GRUBu textový režim
-	echo "  multiboot /boot/kernel.elf text" >> $(ISO_DIR)/boot/grub/grub.cfg # Předá kernelu parametr 'text'
-	echo "  boot" >> $(ISO_DIR)/boot/grub/grub.cfg
-	echo "}" >> $(ISO_DIR)/boot/grub/grub.cfg
+	#echo "menuentry 'Crusader OS (Text Mode)' {" >> $(ISO_DIR)/boot/grub/grub.cfg
+	#echo "  terminal_output console" >> $(ISO_DIR)/boot/grub/grub.cfg
+	#echo "  set gfxpayload=text" >> $(ISO_DIR)/boot/grub/grub.cfg
+	#echo "  multiboot /boot/kernel.elf text" >> $(ISO_DIR)/boot/grub/grub.cfg
+	#echo "  boot" >> $(ISO_DIR)/boot/grub/grub.cfg
+	#echo "}" >> $(ISO_DIR)/boot/grub/grub.cfg
 
 	#GRAPHICAL MODE
-	echo "menuentry 'Crusader OS (Graphical Mode)' {" >> $(ISO_DIR)/boot/grub/grub.cfg
-	echo "  set gfxpayload=800x600x32" >> $(ISO_DIR)/boot/grub/grub.cfg
+	echo "menuentry 'Crusader OS' {" >> $(ISO_DIR)/boot/grub/grub.cfg
+	echo "  set gfxpayload=1600x900x32" >> $(ISO_DIR)/boot/grub/grub.cfg
 	echo "  multiboot /boot/kernel.elf" >> $(ISO_DIR)/boot/grub/grub.cfg
 	echo "  boot" >> $(ISO_DIR)/boot/grub/grub.cfg
 	echo "}" >> $(ISO_DIR)/boot/grub/grub.cfg
