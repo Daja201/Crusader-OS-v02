@@ -1,5 +1,6 @@
 #ifndef KLOG_H
 #define KLOG_H
+#include "vesa.h"
 #include <stdint.h>
 void klog(const char *msg);
 void kklog(const char *msg);
