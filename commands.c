@@ -1,7 +1,7 @@
 #include "commands.h"
 #include "terminal.h"
 #include "vga.h"
-#include "vga13.h"
+//#include "vga13.h"
 #include <string.h>
 #include <stdio.h>
 #include <cpuid.h>
@@ -47,8 +47,8 @@ void cmd_cow(int argc, char** argv) {
             if (l > cow_width) cow_width = l;
         }
 
-        const int screen_w = 80;
-        const int screen_h = 25;
+        const int screen_w = 900;
+        const int screen_h = 1600;
         int x = (screen_w - cow_width) / 2;
         
         if (x < 0) x = 0;
@@ -61,30 +61,31 @@ void cmd_cow(int argc, char** argv) {
 
         for (int step = 0; step <= frames_per_jump; step++) {
             int y = (top_y * (frames_per_jump - step) + bottom_y * step + frames_per_jump/2) / frames_per_jump;
-            vga_init();
-            for (int r = 0; r < y; r++) print_string("\n");
+            vesa_clear(0x000000);
+            for (int r = 0; r < y; r++) vesa_print_string("\n");
             for (int i = 0; i < cow_lines; i++) {
-                for (int s = 0; s < x; s++) print_char(' ');
-                print_string(cow[i]);
-                print_string("\n");
+                for (int s = 0; s < x; s++) vesa_print_char(' ');
+                vesa_print_string(cow[i]);
+                vesa_print_string("\n");
             }
             busy_ms(ms_per_frame);
         }
 
         for (int step = frames_per_jump; step >= 0; step--) {
             int y = (top_y * (frames_per_jump - step) + bottom_y * step + frames_per_jump/2) / frames_per_jump;
-            vga_init();
-            for (int r = 0; r < y; r++) print_string("\n");
-            for (int i = 0; i < cow_lines; i++) {
-                for (int s = 0; s < x; s++) print_char(' ');
-                print_string(cow[i]);
-                print_string("\n");
+            vesa_clear(0x000000);
+            for (int r = 0; r < y; r++) vesa_print_string("\n");
+            for (int i = 0; i < cow_lines; i++) 
+                for (int s = 0; s < x; s++) vesa_print_char(' ');
+                vesa_print_string(cow[i]);
+                vesa_print_string("\n");
             }
             busy_ms(ms_per_frame);
         }
-    }
     return;
-}
+    }
+    
+
 
 //
 
@@ -101,7 +102,7 @@ void cmd_cat(int argc, char** argv) {
 "   |        |/ /     \n"
 "   |  | |   | /   \n"
 "   \\ ml lm /_/      \n";
-    print_string(cat);
+    vesa_print_string(cat);
 }
 
 void cmd_ld(int argc, char** argv) {
@@ -110,7 +111,7 @@ void cmd_ld(int argc, char** argv) {
 }
 
 void cmd_clear(int argc, char** argv) {
-    vga_init();
+    vesa_clear(0x000000);
 }
 
 void cmd_reboot(int argc, char** argv) {
@@ -156,9 +157,9 @@ void cmd_read(int argc, char** argv) {
     for (int i = 0; i < bytes_read; i++) {
         if (buf[i] == '\0') break;
         char ch[2] = {buf[i], '\0'};
-        print_string(ch);
+        vesa_print_string(ch);
     }
-    print_string("\n");
+    vesa_print_string("\n");
 }
 
 void cmd_ls(int argc, char** argv) {
@@ -238,23 +239,32 @@ void cmd_time(int argc, char** argv) {
     itoa(min, b, 10); kklog(b); kklog(":"); 
     itoa(sec, b, 10); klog(b);
 }
-
+/*
 void cmd_gui(int argc, char** argv) {
-    /* Prefer VESA LFB if available */
+    /* Prefer VESA LFB if available 
     if (boot_has_fb) {
         vesa_init_from_params(boot_fb_addr, boot_fb_width, boot_fb_height, boot_fb_bpp, boot_fb_pitch);
         vesa_demo();
     } else {
-        /* fallback to mode13 demo if bootloader set it */
+        // fallback to mode13 demo if bootloader set it 
         vga13_init();
         vga13_demo();
     }
 }
-
+*/
 void cmd_format(int argc, char** argv) {
     format_fs();
 }
-
+/*
+void cmd_test() {
+    vesa_clear(0x000000);
+    for (int b = 0; b < 201 ; b++) {
+        //for (int b = 0; b < 10; b++) {
+        klog("C");
+        //}
+    }
+}
+*/
 void cmd_find(int argc, char** argv) {
     if (argc < 2) {
         kklogf("usage: find <tag>\n");
@@ -289,7 +299,8 @@ command_t commands[] = {
     {"wr", cmd_wr},
     {"dl", cmd_dl},
     {"time", cmd_time},
-    {"gui", cmd_gui},
+    //{"gui", cmd_gui},
+    //{"test", cmd_test},
     {"format", cmd_format}
 };
 //

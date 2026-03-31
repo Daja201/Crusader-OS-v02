@@ -1,5 +1,5 @@
 #include "vga.h"
-#include "vga13.h"
+//#include "vga13.h"
 #include "vesa.h"
 #include <stdint.h>
 #include "klog.h"
@@ -83,9 +83,6 @@ static void vprintf_internal(const char *fmt, va_list args) {
 //Funkce na klog atd (možná přepis jenom vezne ísto serial write char)/
 //ostatni klog f-ce
 
-static void serial_write_char(char c) {
-    vesa_draw_char(c, x_letter, y_letter, 0xFFFFFFFF, 0xDB0000);
-}
 
 void klog(const char* msg) {
     while (*msg != '\0') {
@@ -94,9 +91,9 @@ void klog(const char* msg) {
             x_letter = 0;
             y_letter += 8;
         } else {
-            serial_write_char(c);
+            vesa_draw_char(c, x_letter, y_letter, 0x00FF00, 0x000000);
             x_letter += 8;
-            if (x_letter >= 1600) {
+            if (x_letter >= 600) {
                 x_letter = 0;
                 y_letter += 8;
             }
