@@ -26,6 +26,7 @@
 #define INODE_BITMAP_LBA 2
 #define INODE_TABLE_LBA 3
 #define ROOT_INODE 0
+uint8_t inode_bitmap[INODE_BITMAP_SIZE];
 //#define MAX_DRIVES 4
 #define PTRS_PER_BLOCK (SECTOR_SIZE / sizeof(uint32_t))
 //defines 16bit space for ATA_PRIMARY
@@ -121,7 +122,10 @@ static void set_block_bitmap_bit(uint32_t idx) {
 }
 //searches for free blocks
 int alloc_block() {
-    for (uint32_t i = 0; i < g_superblock.total_blocks; i++) {
+    uint32_t start_idx = 1;
+    const uint32_t FS_MAGIC = 0x5A4C534A;
+    if (g_superblock.magic == FS_MAGIC && g_superblock.data_start > 1) start_idx = g_superblock.data_start;
+    for (uint32_t i = start_idx; i < g_superblock.total_blocks; i++) {
         if (!get_block_bitmap_bit(i)) {
             set_block_bitmap_bit(i);
             return (int)i;
@@ -147,11 +151,16 @@ void free_block(uint32_t idx) {
 }
 //creates root adresary
 void create_root() {
+    inode_bitmap[0] |= 1;
+    save_inode_bitmap();
     inode_t root = {0};
-    //adresary
     root.type = 2;
     int b = alloc_block();
-    root.direct[0] = b;
+    if (b == 0) {
+        klog("create_root: alloc_block failed");
+        return;
+    }
+    root.direct[0] = (uint32_t)b;
     write_inode(0, &root);
 }
 //reads info about file from inode with file number
@@ -230,7 +239,32 @@ static uint32_t ata_get_total_sectors_dev(uint16_t base, uint8_t is_slave) {
 
 //big ass function
 //
-
+void format_fs() {
+    g_superblock.magic = 0x5A4C534A;
+    g_superblock.block_size = SECTOR_SIZE;
+    g_superblock.total_blocks = g_drives[0].total_sectors;
+    g_superblock.inode_count = g_superblock.total_blocks / 4;
+    g_superblock.inode_count = (g_superblock.inode_count + 7) & ~7; 
+    if (g_superblock.inode_count == 0) g_superblock.inode_count = 8;
+    g_superblock.bitmap_start = BLOCK_BITMAP_LBA;
+    block_bitmap_bytes = (uint32_t)((g_superblock.total_blocks + 7) / 8);
+    block_bitmap_sectors = (block_bitmap_bytes + SECTOR_SIZE - 1) / SECTOR_SIZE;
+    inode_bitmap_sectors = ((g_superblock.inode_count + 7) / 8 + SECTOR_SIZE - 1) / SECTOR_SIZE;
+    g_superblock.inode_start = g_superblock.bitmap_start + block_bitmap_sectors + inode_bitmap_sectors;
+    inode_table_blocks = (uint32_t)((g_superblock.inode_count * INODE_SIZE + SECTOR_SIZE - 1) / SECTOR_SIZE);
+    g_superblock.data_start = g_superblock.inode_start + inode_table_blocks;
+    //g_superblock.data_start = g_superblock.bitmap_start + block_bitmap_sectors + inode_bitmap_sectors + inode_table_blocks;
+    block_write(SUPERBLOCK_LBA, (uint8_t*)&g_superblock);
+    for (int i = 0; i < BLOCK_BITMAP_MAX_SIZE; i++) block_bitmap[i] = 0;
+    for (int i = 0; i < INODE_BITMAP_SIZE; i++) inode_bitmap[i] = 0;
+    save_block_bitmap();
+    save_inode_bitmap();
+    for (uint32_t i = 0; i < g_superblock.data_start; i++) {
+        set_block_bitmap_bit(i);
+    }
+    create_root();
+    klog("FORMATED");
+}
 
 // In your driver file
 void init_fs() {
@@ -241,17 +275,11 @@ void init_fs() {
         for (int s = 0; s < 2; s++) {
             uint16_t base = ports[p];
             
-            // 1. QUICK CHECK: Floating Bus?
             if (inb(base + 7) == 0xFF) continue;
-
-            // 2. IDENTIFY: Get sectors
             uint32_t sectors = ata_get_total_sectors_dev(base, s);
-
-            // 3. VALIDATE: Only if sectors is a sane number
             if (sectors > 0 && sectors < 0xFFFFFFF) { 
-                // Don't use kklogf for now if it's broken, use a simpler print if you have it
-                kklogf("Found Disk on 0x%x Slave %d", (uint32_t)base, (uint32_t)s);
-                
+                klogf("Disk 0x%x", (uint32_t)base);
+                klogf("Slave %d", (uint32_t)s);
                 g_drives[g_active_drives].ata_base = base;
                 g_drives[g_active_drives].is_slave = s;
                 g_drives[g_active_drives].total_sectors = sectors;
@@ -259,8 +287,42 @@ void init_fs() {
             }
         }
     }
-    // Final count check
+
     if (g_active_drives > 4) g_active_drives = 0; // Emergency reset if logic fails
+
+    // Read superblock and prepare filesystem structures
+    // Select first detected drive and load superblock
+    if (g_active_drives == 0) {
+        klog("No active drives found");
+        return;
+    }
+    select_drive(g_drives[0].ata_base, g_drives[0].is_slave);
+    // read superblock from LBA0
+    block_read(SUPERBLOCK_LBA, (uint8_t*)&g_superblock);
+    const uint32_t FS_MAGIC = 0x5A4C534A;
+    if (g_superblock.magic != FS_MAGIC) {
+        klog("No valid filesystem superblock (magic mismatch)");
+        return;
+    }
+
+    // compute sizes for bitmaps and inode table
+    block_bitmap_bytes = (uint32_t)((g_superblock.total_blocks + 7) / 8);
+    block_bitmap_sectors = (block_bitmap_bytes + SECTOR_SIZE - 1) / SECTOR_SIZE;
+    inode_bitmap_sectors = ((g_superblock.inode_count + 7) / 8 + SECTOR_SIZE - 1) / SECTOR_SIZE;
+    inode_table_blocks = (uint32_t)((g_superblock.inode_count * INODE_SIZE + SECTOR_SIZE - 1) / SECTOR_SIZE);
+
+    // load bitmaps into RAM
+    load_block_bitmap();
+    load_inode_bitmap();
+
+    // ensure root inode exists
+    inode_t root;
+    read_inode(ROOT_INODE, &root);
+    if (root.type != 2) {
+        klog("Creating root directory");
+        create_root();
+    }
+
 }
 
 
@@ -318,6 +380,7 @@ int dir_lookup(inode_t* dir, const char* name) {
 
         for (int i = 0; i < entries_per_block; i++) {
             if (entries[i].inode == 0) continue;
+            if (entries[i].inode >= g_superblock.inode_count) continue;
             if (strcmp(entries[i].name, name) == 0) {
                 return (int)entries[i].inode;
             }
@@ -344,7 +407,8 @@ int dir_add(uint32_t dir_inode_id, inode_t* dir, const char* name, uint32_t inod
         for (int i = 0; i < (SECTOR_SIZE / sizeof(struct dirent)); i++) {
             if (entries[i].inode == 0) { 
                 entries[i].inode = inode_idx;
-                strncpy(entries[i].name, name, 31);
+                strncpy(entries[i].name, name, sizeof(entries[i].name) - 1);
+                entries[i].name[sizeof(entries[i].name) - 1] = '\0';
                 block_write(dir->direct[b], buf);
                 return 0; 
             }
@@ -386,12 +450,12 @@ uint32_t fs_create_file(const char* name, const char* main_tag) {
     strncpy(node.tags[0], "normal", TAG_LEN);
 
     int b = alloc_block();
-    if (b < 0) {
+    if (b == 0) {
         free_inode(idx);
         return (uint32_t)-1;
     }
 
-    node.direct[0] = b;
+    node.direct[0] = (uint32_t)b;
     write_inode(idx, &node);
     inode_t root;
     read_inode(0, &root);

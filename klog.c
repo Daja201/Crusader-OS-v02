@@ -15,7 +15,7 @@ static void vprintf_internal(const char *fmt, va_list args) {
     for (int i = 0; fmt[i] != '\0'; i++) {
         if (fmt[i] != '%') {
             char out[2] = { fmt[i], 0 };
-            kklog(out);
+            klog(out);
             continue;
         }
         i++;
@@ -111,22 +111,21 @@ void klog(const char* msg) {
 }
 
 void kklog(const char* msg) {
-    klog(msg); }
-
+    klog(msg); 
+    klog("\n");
+}
 void klogf(const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     vprintf_internal(fmt, args);
     va_end(args);
-    y_letter += 8;
-    klog("\n");
+    //y_letter += 8;
+    
 }
 
 void kklogf(const char *fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    vprintf_internal(fmt, args);
-    va_end(args);
+    klogf(fmt);
+       
 }
 
 /*

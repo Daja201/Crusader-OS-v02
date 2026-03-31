@@ -60,7 +60,7 @@ char bios_getchar_echo(void)
         if (c == '\b') {
             return '\b';
         }
-        print_char(c);
+        vesa_print_char(c);
         return c;
     }
 }

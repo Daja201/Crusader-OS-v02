@@ -6,8 +6,8 @@
 #define MAX_TAGS 3
 #define TAG_LEN 12
 #define MAX_DRIVES 4
-#define BLOCK_BITMAP_MAX_SIZE 8192
-#define INODE_BITMAP_SIZE 512
+#define BLOCK_BITMAP_MAX_SIZE 32768
+#define INODE_BITMAP_SIZE 32768
 
 typedef struct {
     uint32_t magic;
@@ -68,5 +68,6 @@ uint32_t fs_create_file(const char* name, const char* main_tag);
 int fs_write(uint32_t inode, const uint8_t* data, size_t len);
 uint32_t fs_read(uint32_t inode_idx, inode_t* node, uint32_t offset, uint32_t size, uint8_t* buffer);
 int fs_delete_file(const char* path);
+void format_fs(void);
 int fs_find_by_tag(const char* tag, uint32_t* results, int max_results);
 #endif
