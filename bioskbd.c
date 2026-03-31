@@ -1,5 +1,4 @@
 #include "bioskbd.h"
-#include "vga.h"
 #include "font.h"
 
 int vesa_cursor_x = 0;

@@ -1,7 +1,6 @@
 #include "library.h"
 #include "fs.h"
 #include "klog.h"
-#include "vga.h"
 void library(void){
     vesa_clear(0X00001F);
     //

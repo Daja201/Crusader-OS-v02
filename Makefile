@@ -18,27 +18,18 @@ GRUB_DIR = $(ISO_DIR)/boot/grub
 ISO = os.iso
 KERNEL = ./kernel.elf
 
-# main target
 all: $(ISO)
 
-# compile assembly
 loader.o: loader.s
 	$(NASM) $(NASM_FLAGS) loader.s -o loader.o
 
-# compile C sources
 kernel.o: kernel.c
 	$(CC) $(CFLAGS) kernel.c -o kernel.o
-
-vga.o: vga.c
-	$(CC) $(CFLAGS) vga.c -o vga.o
-
-vga13.o: vga13.c vga13.h
-	$(CC) $(CFLAGS) vga13.c -o vga13.o
 
 klog.o: klog.c
 	$(CC) $(CFLAGS) klog.c -o klog.o
 
-bioskbd.o: bioskbd.c bioskbd.h vga.h 
+bioskbd.o: bioskbd.c bioskbd.h
 	$(CC) $(CFLAGS) bioskbd.c -o bioskbd.o
 
 libdiv.o: libdiv.c
@@ -46,10 +37,9 @@ libdiv.o: libdiv.c
 font.o: font.c
 	$(CC) $(CFLAGS) font.c -o font.o
 
-# link kernel
 kernel.elf: $(OBJ)
 	$(LD) $(LD_FLAGS) $(OBJ) -o $(KERNEL)
-#iso build
+
 $(ISO): $(KERNEL)
 	rm -rf $(ISO_DIR)
 	mkdir -p $(ISO_DIR)/boot/grub
@@ -75,11 +65,9 @@ $(ISO): $(KERNEL)
 	grub-mkrescue -o $(ISO) $(ISO_DIR)
 	
 	echo "MAKE HAS DONE EVERYTHING FOR YOU, DRIVE SIZE: 128MB"
-# clean
 clean:
 	rm -f *.o $(KERNEL) $(ISO)
 	rm -rf $(ISO_DIR)
-# run
 run:
 	qemu-system-i386 -cdrom os.iso -drive file=disk.img,format=raw,index=0,media=disk -m 512M -vga std -serial stdio
 dd32:
@@ -90,7 +78,6 @@ dd4:
 	dd if=/dev/zero of=disk.img bs=1M count=4 status=progress
 hd:
 	hexdump -C disk.img | less
-#WHOLE MAKE CYCLE
 a:
 	make clean
 	make dd128

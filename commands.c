@@ -1,9 +1,8 @@
 #include "commands.h"
 #include "terminal.h"
-#include "vga.h"
-//#include "vga13.h"
 #include <string.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <cpuid.h>
 #include "reboot.h"
 #include "diskinfo.h"
@@ -16,15 +15,15 @@
 #include "vesa.h"
 
 void cmd_help(int argc, char** argv) {
-    klog("Welcome to Crusader OS makde by David Zapletal");
-    klog("Source code shoould be available on: https://github.com/Daja201/Crusader-OS-v02");
-    klog("Feel free to copy and change source code for yourself.");
-    klog("Run command: 'lib' for info about commands and whole system.");
+    kklog("Welcome to Crusader OS makde by David Zapletal");
+    kklog("Source code shoould be available on: https://github.com/Daja201/Crusader-OS-v02");
+    kklog("Feel free to copy and change source code for yourself.");
+    kklog("Run command: 'lib' for info about commands and whole system.");
 }
 
 void busy_ms(int ms) {
-            volatile unsigned int iter = 8000 * ms;
-            for (volatile unsigned int i = 0; i < iter; i++) asm volatile ("nop");
+    volatile unsigned int iter = 8000 * ms;
+    for (volatile unsigned int i = 0; i < iter; i++) asm volatile ("nop");
 }
 
 //YAII FINALLY JUPMING COW (Thanks to Lujza <3 for whole idea)
@@ -104,18 +103,19 @@ void cmd_clear(int argc, char** argv) {
 }
 
 void cmd_reboot(int argc, char** argv) {
-    klog("reboot in process\n");
+    kklog("reboot in process\n");
     reboot_triple_fault();
+    
 }
 
 void cmd_lib(int argc, char** argv) {
-    klog("Welcome to library of Crusader OS:\n");
+    kklog("Welcome to library of Crusader OS:\n");
     library();
 }
 
 void cmd_read(int argc, char** argv) {
     if (argc < 2) {
-        klog("Usage: read <filename>");
+        kklog("Usage: read <filename>");
         return;
     }
     inode_t root;
@@ -123,7 +123,7 @@ void cmd_read(int argc, char** argv) {
 
     int inode_num = dir_lookup(&root, argv[1]);
     if (inode_num < 0) {
-        klog("Error: File not found");
+        kklog("Error: File not found");
         return;
     }
     inode_t file_node;
@@ -135,7 +135,7 @@ void cmd_read(int argc, char** argv) {
     }
     int bytes_read = fs_read(inode_num, &file_node, 0, to_read, buf);
     if (bytes_read <= 0) {
-        klog("Error: Could not read file (or empty)");
+        kklog("Error: Could not read file (or empty)");
         return;
     }
     for (int i = 0; i < bytes_read; i++) {
@@ -155,7 +155,7 @@ void cmd_ls(int argc, char** argv) {
         char name[28];
     };
     int entry_count = 512 / sizeof(struct dirent);
-    klog("Files in root directory:");
+    kklog("Files in root directory:");
     for (int b = 0; b < 12; b++) {
         uint32_t block_lba = root.direct[b];
         if (block_lba == 0) break; 
@@ -164,7 +164,7 @@ void cmd_ls(int argc, char** argv) {
         for (int i = 0; i < entry_count; i++) {
             if (entries[i].inode != 0) {
                 inode_t file_node;
-                klog("  ");
+                kklog("  ");
                 klog(entries[i].name);
                 klog(" - ");
                 klog(file_node.main_tag);
@@ -176,19 +176,19 @@ void cmd_ls(int argc, char** argv) {
 
 void cmd_dl(int argc, char** argv) {
     if (argc < 2) {
-        klog("usage: dl <file>");
+        kklog("usage: dl <file>");
         return;
     }
     if (fs_delete_file(argv[1]) < 0) {
-        klog("dl: failed");
+        kklog("dl: failed");
         return;
     }
-    klog("file deleted");
+    kklog("file deleted");
 }
 
 void cmd_wr(int argc, char** argv) {
     if (argc < 3) {
-        klog("Usage: wr <filename> <data>");
+        kklog("Usage: wr <filename> <data>");
         return;
     }
     const char* wr = "wr";
@@ -196,14 +196,14 @@ void cmd_wr(int argc, char** argv) {
     const char* data = argv[2];
     uint32_t inode = fs_create_file(filename, wr);
     if ((int32_t)inode < 0) {
-        klog("file creation failed");
+        kklog("file creation failed");
         return;
     }
     int written = fs_write(inode, (const uint8_t*)data, strlen(data));
     if (written < 0) {
-        klog("write failed");
+        kklog("write failed");
     } else {
-        klog("write successful");
+        kklog("write successful");
     }
 }
 

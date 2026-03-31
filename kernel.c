@@ -1,4 +1,4 @@
-#include "vga.h"
+//#include "vga.h"
 #include "klog.h"
 #include "bioskbd.h"
 #include "terminal.h"
@@ -7,6 +7,7 @@
 #include "string.h"
 #include "vesa.h"
 #include "commands.h"
+#include "bootinfo.h"
 
 void kmain(unsigned long mb_magic, unsigned long mb_info) {
     parse_multiboot((uint32_t)mb_magic, (uint32_t)mb_info);

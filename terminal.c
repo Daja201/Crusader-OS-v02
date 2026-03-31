@@ -1,5 +1,6 @@
 #include "terminal.h"
 #include "commands.h"
+#include "klog.h"
 #include <string.h>
 static char cmd_buf[CMD_BUF_SIZE];
 static int cmd_len = 0;
@@ -29,7 +30,8 @@ void terminal_key(char c) {
         cmd_buf[cmd_len] = 0;
         execute_command(cmd_buf);
         cmd_len = 0;
-        klog("comm> ");
+        klog("\n");
+        kklog("comm> ");
         return;
     }
     if (c == '\b') {

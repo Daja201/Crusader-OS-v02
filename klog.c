@@ -1,4 +1,4 @@
-#include "vga.h"
+#include "bootinfo.h"
 #include "vesa.h"
 #include <stdint.h>
 #include "klog.h"
@@ -84,7 +84,7 @@ void klog(const char* msg) {
             x_letter = 0;
             y_letter += 8;
         } else {
-            vesa_draw_char(c, x_letter, y_letter, 0x00FF00, 0x000000);
+            vesa_draw_char(c, x_letter, y_letter, 0xFFFFFF, 0x000000);
             x_letter += 8;
             if (x_letter > 1080) {
                 x_letter = 0;

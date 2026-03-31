@@ -15,17 +15,17 @@ static inline uint8_t inb(uint16_t port) {
 void detect_disk() {
     uint8_t status = inb(0x1F7);
     if (status == 0xFF || status == 0x00) {
-        klog("No disk detected on primary ATA");
+        kklog("No disk detected on primary ATA");
         return;
     }
     if (status & 0x01) {
-        klog("Disk error detected");
+        kklog("Disk error detected");
         return;
     }
     if (status & 0x40) {
-        klog("Disk ready (DRDY set)");
+        kklog("Disk ready (DRDY set)");
     } else {
-        klog("Disk not ready");
+        kklog("Disk not ready");
     }
 }
 
@@ -44,7 +44,7 @@ void identify_disk() {
         data[i] = val;
     }
 
-    klog("Disk IDENTIFY read OK");
+    kklog("Disk IDENTIFY read OK");
     uint64_t sectors = ((uint64_t)data[100]) |
                        ((uint64_t)data[101] << 16) |
                        ((uint64_t)data[102] << 32) |
@@ -54,9 +54,9 @@ void identify_disk() {
     }
 
     if (sectors == 0) {
-        klog("size: unknown (IDENTIFY returned 0)");
+        kklog("size: unknown (IDENTIFY returned 0)");
         klog("FS superblock total_blocks:");
-        klogf("%llu", (unsigned long long)g_superblock.total_blocks);
+        kklogf("%llu", (unsigned long long)g_superblock.total_blocks);
     } else {
         char tmp[32]; int tp = 0;
         uint64_t tv = sectors;
@@ -69,9 +69,9 @@ void identify_disk() {
         tp = 0; tv = bytes; if (tv == 0) tmp[tp++] = '0';
         while (tv) { tmp[tp++] = '0' + (tv % 10); tv /= 10; }
         for (int i = 0; i < tp; ++i) buf[i] = tmp[tp-1-i]; buf[tp] = '\0';
-        klog("size (bytes):"); klog(buf);   
+        kklog("size (bytes):"); klog(buf);   
         klog("FS superblock total_blocks:");
-        klogf("%llu", (unsigned long long)g_superblock.total_blocks);
+        kklogf("%llu", (unsigned long long)g_superblock.total_blocks);
     }
 
 }
