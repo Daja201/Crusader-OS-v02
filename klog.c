@@ -118,7 +118,6 @@ void kklogf(const char *fmt, ...) {
 
 //COLOUR FONTS:
 
-
 static void vprintf_internal_green_kk(const char *fmt, va_list args) {
     char buf[32];
     char ch;
@@ -239,7 +238,6 @@ void klog_green(const char* msg) {
         }
         msg++; 
     }
-    //klog("\n");
 }
 
 void kklog_green(const char* msg) {
@@ -283,7 +281,6 @@ void klog_red(const char* msg) {
         }
         msg++;
     }
-    //klog("\n");
 }
 
 void kklog_red(const char* msg) {

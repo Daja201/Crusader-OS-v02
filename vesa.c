@@ -2,7 +2,6 @@
 #include "font.h"
 #include <stdint.h>
 #include <string.h>
-//#include "bioskbd.h"
 
 int vesa_ready = 0;
 static volatile uint8_t *lfb = 0;

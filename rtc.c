@@ -6,20 +6,25 @@ static inline uint8_t inb(uint16_t port) {
     __asm__ volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
     return ret;
 }
+
 static inline void outb(uint16_t port, uint8_t val) {
     __asm__ volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
 }
+
 static uint8_t rtc_read(uint8_t reg) {
     outb(0x70, reg);
     return inb(0x71);
 }
+
 static int rtc_updating() {
     outb(0x70, 0x0A);
     return inb(0x71) & 0x80;
 }
+
 static int bcd_to_bin(int val) {
     return (val & 0x0F) + ((val >> 4) * 10);
 }
+
 void rtc_get_datetime(
     int* year,
     int* month,
@@ -28,6 +33,7 @@ void rtc_get_datetime(
     int* min,
     int* sec
 )
+
 {
     uint8_t statusB;
     while (rtc_updating());

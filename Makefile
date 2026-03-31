@@ -11,13 +11,11 @@ LD_FLAGS = -m elf_i386 -T link.ld
 
 # files
 ASM = loader.s
-C_SRC = kernel.c vesa.c bootinfo.c klog.c bioskbd.c terminal.c commands.c string.c reboot.c fs.c diskinfo.c  library.c libdiv.c rtc.c font.c #vga.c #vga13.c
-OBJ = loader.o kernel.o vesa.o bootinfo.o klog.o bioskbd.o terminal.o commands.o string.o reboot.o fs.o diskinfo.o  library.o libdiv.o rtc.o font.o #vga.o #vga13.o
+C_SRC = kernel.c vesa.c bootinfo.c klog.c bioskbd.c terminal.c commands.c string.c reboot.c fs.c diskinfo.c  library.c libdiv.c rtc.c font.c
+OBJ = loader.o kernel.o vesa.o bootinfo.o klog.o bioskbd.o terminal.o commands.o string.o reboot.o fs.o diskinfo.o  library.o libdiv.o rtc.o font.o
 ISO_DIR = iso
 GRUB_DIR = $(ISO_DIR)/boot/grub
-STAGE2 = ./stage2_eltorito
 ISO = os.iso
-MENU = ./menu.lst
 KERNEL = ./kernel.elf
 
 # main target
@@ -98,4 +96,4 @@ a:
 	make dd128
 	make 
 	make run
-	echo (((((MAKE HAS DONE EVERYTHING FOR YOU, DRIVE SIZE: 128MB)))))
+	echo MAKE HAS DONE EVERYTHING FOR YOU, DRIVE SIZE: 128MB

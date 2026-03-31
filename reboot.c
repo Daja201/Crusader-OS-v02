@@ -1,4 +1,3 @@
-// arch/x86/reboot.c
 #include <stdint.h>
 #include "reboot.h"
 

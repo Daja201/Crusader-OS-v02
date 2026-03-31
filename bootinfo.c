@@ -1,6 +1,5 @@
 #include "bootinfo.h"
 #include <stdint.h>
-
 int boot_has_fb = 0;
 uint32_t boot_fb_addr = 0;
 uint32_t boot_fb_width = 0;

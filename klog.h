@@ -9,7 +9,9 @@ void klogf(const char *fmt, ...);
 void kklogf(const char *fmt, ...);
 void logo();
 void klogf_green(const char *fmt, ...);
+void kklogf_green(const char *fmt, ...);
 void klog_green(const char* msg);
+void kklog_green(const char* msg);
 void kklog_red(const char* msg);
 void klog_red(const char* msg);
 #endif

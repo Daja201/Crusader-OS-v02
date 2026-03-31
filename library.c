@@ -3,9 +3,8 @@
 #include "klog.h"
 #include "vga.h"
 void library(void){
-    vesa_clear(0X000000);
+    vesa_clear(0X00001F);
     //
-    kklog("test library ran from library.c");
     kklog("This is an simple operating system made by David Zapletal. Github: Daja201");
     kklog("Here is simple library for using this operating system.");
     //
