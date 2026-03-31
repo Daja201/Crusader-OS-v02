@@ -47,8 +47,8 @@ void cmd_cow(int argc, char** argv) {
             if (l > cow_width) cow_width = l;
         }
 
-        const int screen_w = 900;
-        const int screen_h = 1600;
+        const int screen_w = 720;
+        const int screen_h = 1080;
         int x = (screen_w - cow_width) / 2;
         
         if (x < 0) x = 0;
@@ -233,11 +233,12 @@ void cmd_time(int argc, char** argv) {
     int hour, min, sec;
     rtc_get_datetime(&year, &month, &day, &hour, &min, &sec);
     char b[8];
-    klog("RTC: ");
-    itoa(year, b, 10); kklog(b);;itoa(month, b, 10);kklog(" "); kklog(b);itoa(day, b, 10);kklog(" "); kklog(b); kklog(" ");
-    itoa(hour, b, 10); kklog(b); kklog(":");
-    itoa(min, b, 10); kklog(b); kklog(":"); 
-    itoa(sec, b, 10); klog(b);
+    klog_green("RTC: ");
+    itoa(year, b, 10); klog_green(b);;itoa(month, b, 10);klog_green(" "); klog_green(b);itoa(day, b, 10);klog_green(" "); klog_green(b); klog_green(" ");
+    itoa(hour, b, 10); klog_green(b); klog_green(":");
+    itoa(min, b, 10); klog_green(b); klog_green(":"); 
+    itoa(sec, b, 10); klog_green(b);
+    klog_green("\n");
 }
 /*
 void cmd_gui(int argc, char** argv) {

@@ -70,4 +70,5 @@ uint32_t fs_read(uint32_t inode_idx, inode_t* node, uint32_t offset, uint32_t si
 int fs_delete_file(const char* path);
 void format_fs(void);
 int fs_find_by_tag(const char* tag, uint32_t* results, int max_results);
+void drives();
 #endif

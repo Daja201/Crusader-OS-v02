@@ -266,20 +266,16 @@ void format_fs() {
     klog("FORMATED");
 }
 
-// In your driver file
-void init_fs() {
+void drives() {
     g_active_drives = 0;
     uint16_t ports[] = { 0x1F0, 0x170 };
-
     for (int p = 0; p < 2; p++) {
         for (int s = 0; s < 2; s++) {
             uint16_t base = ports[p];
-            
             if (inb(base + 7) == 0xFF) continue;
             uint32_t sectors = ata_get_total_sectors_dev(base, s);
             if (sectors > 0 && sectors < 0xFFFFFFF) { 
-                klogf("Disk 0x%x", (uint32_t)base);
-                klogf("Slave %d", (uint32_t)s);
+                kklogf_green("Disk 0x%x, Slave %d", (uint32_t)base, (uint32_t)s);
                 g_drives[g_active_drives].ata_base = base;
                 g_drives[g_active_drives].is_slave = s;
                 g_drives[g_active_drives].total_sectors = sectors;
@@ -287,6 +283,11 @@ void init_fs() {
             }
         }
     }
+}
+
+// In your driver file
+void init_fs() {
+    //drives();
 
     if (g_active_drives > 4) g_active_drives = 0; // Emergency reset if logic fails
 
