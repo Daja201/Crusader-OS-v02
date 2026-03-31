@@ -1,11 +1,12 @@
 #include "vga.h"
-#include "vga13.h"
+//#include "vga13.h"
 #include "klog.h"
 #include "bioskbd.h"
 #include "terminal.h"
 #include "fs.h"
 #include "rtc.h"
 #include "string.h"
+#include "vesa.h"
 
 void kmain(unsigned long mb_magic, unsigned long mb_info) {
     parse_multiboot((uint32_t)mb_magic, (uint32_t)mb_info);
@@ -23,7 +24,7 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
     }
     //
 
-    vga_init();
+    //vga_init();
     vesa_init_from_params(boot_fb_addr, boot_fb_width, boot_fb_height, boot_fb_bpp, boot_fb_pitch);
     
     /*if (boot_has_fb) {
@@ -66,6 +67,14 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
     //kklog("FRAMEBUFFER DETECTED");
     kklog("KERNEL BOOT OKAY");
     kklog("WELCOME TO CRUSADER OS");
+    
+    for(int b = 0; b < 100; b ++) {
+        vesa_putpixel(100 + b, 100, 0x00FF00);
+    }   
+    for(int b = 0; b < 100; b ++) {
+        vesa_putpixel(100, 100 + b, 0x00FF00);
+    }   
+    
 
         //rectannle lol /*
     /*vga13_fill_rect(10, 10, 1000, 1000, 15);

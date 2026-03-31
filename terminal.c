@@ -1,6 +1,6 @@
 #include "terminal.h"
 #include "commands.h"
-#include "vga.h"
+//#include "vga.h"
 #include <string.h>
 static char cmd_buf[CMD_BUF_SIZE];
 static int cmd_len = 0;
@@ -29,13 +29,13 @@ void execute_command(char* line) {
     }
     klog("sorry buddy we don't know this one\n");
 }
+
 void terminal_key(char c) {
     if (c == '\n') {
         cmd_buf[cmd_len] = 0;
         execute_command(cmd_buf);
         cmd_len = 0;
-        /* ensure the latest output and prompt stay visible at the bottom */
-        vga_scroll_to_bottom();
+        //vga_scroll_to_bottom();
         klog("comm> ");
         return;
     }
@@ -43,7 +43,7 @@ void terminal_key(char c) {
     if (c == '\b') {
         if (cmd_len > 0) {
             cmd_len--;
-            vga_backspace();
+            //vga_backspace();
         }
         return;
     }

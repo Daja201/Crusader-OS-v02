@@ -14,7 +14,7 @@ static uint32_t fb_pitch = 0;
 
 void vesa_init_from_params(uint32_t phys_addr, uint32_t width, uint32_t height, uint32_t bpp, uint32_t pitch) {
     lfb = (volatile uint8_t*)(uintptr_t)phys_addr;
-    fb_width = width;
+    fb_width = 1200;
     fb_height = height;
     fb_bpp = bpp;
     fb_pitch = pitch ? pitch : (width * ((bpp + 7) / 8));
@@ -109,3 +109,4 @@ void vesa_print_string(const char *str) {
         vesa_print_char(*str++);
     }
 }
+
