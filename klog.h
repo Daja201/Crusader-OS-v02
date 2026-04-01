@@ -18,5 +18,4 @@ void new_note(const char* name, const char* content);
 void delete_note(const char* name);
 void gui();
 void delete_all_notes();
-
 #endif

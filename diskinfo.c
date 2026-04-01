@@ -15,17 +15,17 @@ static inline uint8_t inb(uint16_t port) {
 void detect_disk() {
     uint8_t status = inb(0x1F7);
     if (status == 0xFF || status == 0x00) {
-        klog("No disk detected on primary ATA");
+        kklog("No disk detected on primary ATA");
         return;
     }
     if (status & 0x01) {
-        klog("Disk error detected");
+        kklog("Disk error detected");
         return;
     }
     if (status & 0x40) {
-        klog("Disk ready (DRDY set)");
+        kklog("Disk ready (DRDY set)");
     } else {
-        klog("Disk not ready");
+        kklog("Disk not ready");
     }
 }
 
@@ -64,14 +64,16 @@ void identify_disk() {
         while (tv) { tmp[tp++] = '0' + (tv % 10); tv /= 10; }
         for (int i = 0; i < tp; ++i) tmp[i] = tmp[i]; 
         char buf[32]; for (int i = 0; i < tp; ++i) buf[i] = tmp[tp-1-i]; buf[tp] = '\0';
-        klog("size (sectors):"); klog(buf);
+        klog("size (sectors):"); kklog(buf);
         uint64_t bytes = sectors * 512ULL;
         tp = 0; tv = bytes; if (tv == 0) tmp[tp++] = '0';
         while (tv) { tmp[tp++] = '0' + (tv % 10); tv /= 10; }
         for (int i = 0; i < tp; ++i) buf[i] = tmp[tp-1-i]; buf[tp] = '\0';
-        kklog("size (bytes):"); klog(buf);   
+        klog("size (bytes):"); kklog(buf);   
         klog("FS superblock total_blocks:");
         kklogf("%llu", (unsigned long long)g_superblock.total_blocks);
+        if (g_superblock.magic != 0x5A4C534A); kklog_red("drive is't properly formatted, use 'format' to format it");  
+        if (g_superblock.magic == 0x5A4C534A); kklog_green("drive formatted properly");
     }
     klog("\n");
 }

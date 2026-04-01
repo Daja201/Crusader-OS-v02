@@ -30,7 +30,8 @@ uint8_t inode_bitmap[INODE_BITMAP_SIZE];
 static uint16_t current_ata_base = ATA_PRIMARY;
 static uint8_t current_is_slave = 0;
 fs_device_t g_drives[MAX_DRIVES];
-int g_active_drives = 0;superblock_t g_superblock;
+int g_active_drives = 0;
+superblock_t g_superblock;
 static uint32_t inode_table_blocks = 0;
 static uint32_t block_bitmap_sectors = 0;
 static uint32_t inode_bitmap_sectors = 0;
@@ -156,7 +157,7 @@ void create_root() {
     root.type = 2;
     int b = alloc_block();
     if (b == 0) {
-        klog("create_root: alloc_block failed");
+        kklog("create_root: alloc_block failed");
         return;
     }
     root.direct[0] = (uint32_t)b;
@@ -256,7 +257,7 @@ void format_fs() {
         set_block_bitmap_bit(i);
     }
     create_root();
-    klog("FORMATED");
+    kklog("FORMATTED");
 }
 
 void drives() {
@@ -281,14 +282,14 @@ void drives() {
 void init_fs() {
     if (g_active_drives > 4) g_active_drives = 0;
     if (g_active_drives == 0) {
-        klog("No active drives found");
+        kklog("No active drives found");
         return;
     }
     select_drive(g_drives[0].ata_base, g_drives[0].is_slave);
     block_read(SUPERBLOCK_LBA, (uint8_t*)&g_superblock);
     const uint32_t FS_MAGIC = 0x5A4C534A;
     if (g_superblock.magic != FS_MAGIC) {
-        klog("No valid filesystem superblock (magic mismatch)");
+        kklog("No valid filesystem superblock (magic mismatch)");
         return;
     }
     block_bitmap_bytes = (uint32_t)((g_superblock.total_blocks + 7) / 8);
@@ -300,7 +301,7 @@ void init_fs() {
     inode_t root;
     read_inode(ROOT_INODE, &root);
     if (root.type != 2) {
-        klog("Creating root directory");
+        kklog("Creating root directory");
         create_root();
     }
 }
@@ -384,7 +385,7 @@ int dir_add(uint32_t dir_inode_id, inode_t* dir, const char* name, uint32_t inod
             }
         }    
     }
-    klog("ERROR: FULL, MAKE AN INDIRECT BLOCK SUPPORT");
+    kklog("ERROR: FULL, MAKE AN INDIRECT BLOCK SUPPORT");
     return -1;
 }
 

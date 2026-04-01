@@ -28,6 +28,10 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
     logo();
     extern uint8_t *block_bitmap;
     init_fs();
+    verse();
+    appname("TERMINAL");
+    klog("\n");
+    klog_yellow("CRUSADER>>> ");
     for (;;) {
         char c = bios_getchar_echo();
         terminal_key(c);

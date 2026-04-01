@@ -109,7 +109,6 @@ void cmd_reboot(int argc, char** argv) {
 }
 
 void cmd_lib(int argc, char** argv) {
-    kklog("Welcome to library of Crusader OS:\n");
     library();
 }
 

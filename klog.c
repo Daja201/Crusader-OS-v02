@@ -135,7 +135,8 @@ void klogf(const char *fmt, ...) {
 }
 
 void kklogf(const char *fmt, ...) {
-    klogf(fmt);  
+    klogf(fmt);
+    klog("\n");  
 }
 
 //COLOUR FONTS:
@@ -350,31 +351,79 @@ void kklog_red(const char* msg) {
 
 void gui() {
     const char *title = "CRUSADER OS";
-    vesa_draw_rec(0, 0, 1280, 900, 0x00001F);
+    //bckgrnd
+    vesa_draw_rec(0, 0, 1280, 900, 0x000000);
+    //JUST A LINE * 3 ↓
     vesa_draw_ver(960, 0, 720, 0xFFFFFF);
     vesa_draw_ver(961, 0, 720, 0xFFFFFF);
     vesa_draw_ver(962, 0, 720, 0xFFFFFF);
-    //
+    //LOG ↓
     vesa_draw_ver(970, 30, 100, 0xFFFFFF);
     vesa_draw_ver(1270, 30, 100, 0xFFFFFF);
     vesa_draw_hor(970, 30, 300, 0xFFFFFF);
     vesa_draw_hor(970, 130, 300, 0xFFFFFF);
-    //
+    // NOTES ↓ 
     vesa_draw_ver(970, 140, 310, 0xFFFFFF);
     vesa_draw_ver(1270, 140, 310, 0xFFFFFF);
     vesa_draw_hor(970, 140, 300, 0xFFFFFF);
     vesa_draw_hor(970, 450, 300, 0xFFFFFF);
-    
+    // SONGS ↓, VERSE ↓, CALENDAR + TODO ↓
+    vesa_draw_ver(970, 460, 200, 0xFFFFFF);
+    vesa_draw_ver(1270, 460, 200, 0xFFFFFF);
+    vesa_draw_hor(970, 460, 300, 0xFFFFFF);
+    vesa_draw_hor(970, 660, 300, 0xFFFFFF);
+    vesa_draw_hor(970, 550, 300, 0xFFFFFF);
+    vesa_draw_hor(970, 500, 300, 0xFFFFFF);
+    //APP_red ↓
+    vesa_draw_ver(975, 670, 40, 0xFFFFFF);
+    vesa_draw_ver(1015, 670, 40, 0xFFFFFF);
+    vesa_draw_hor(975, 670, 40, 0xFFFFFF);
+    vesa_draw_hor(975, 710, 40, 0xFFFFFF);
+    vesa_draw_rec(976, 671, 38, 38, 0xAA0000);
+    //APP_blue ↓
+    vesa_draw_ver(1015, 670, 40, 0xFFFFFF);
+    vesa_draw_ver(1055, 670, 40, 0xFFFFFF);
+    vesa_draw_hor(1015, 670, 40, 0xFFFFFF);
+    vesa_draw_hor(1015, 710, 40, 0xFFFFFF);
+    vesa_draw_rec(1016, 671, 38, 38, 0x0000AA);
+    //APP_green ↓
+    vesa_draw_ver(1055, 670, 40, 0xFFFFFF);
+    vesa_draw_ver(1095, 670, 40, 0xFFFFFF);
+    vesa_draw_hor(1055, 670, 40, 0xFFFFFF);
+    vesa_draw_hor(1055, 710, 40, 0xFFFFFF);
+    vesa_draw_rec(1056, 671, 38, 38, 0x00AA00);
+    //APP_yellow ↓
+    vesa_draw_ver(1095, 670, 40, 0xFFFFFF);
+    vesa_draw_ver(1135, 670, 40, 0xFFFFFF);
+    vesa_draw_hor(1095, 670, 40, 0xFFFFFF);
+    vesa_draw_hor(1095, 710, 40, 0xFFFFFF);
+    vesa_draw_rec(1096, 671, 38, 38, 0xAAAA00);
+    //appname ↓
+    vesa_draw_ver(1145, 670, 40, 0xFFFFFF);
+    vesa_draw_ver(1270, 670, 40, 0xFFFFFF);
+    vesa_draw_hor(1145, 670, 125, 0xFFFFFF);
+    vesa_draw_hor(1145, 710, 125, 0xFFFFFF);
+    //
     int temp_x = 970;
     for (int i = 0; title[i] != '\0'; i++) {
         vesa_draw_char(title[i], temp_x, 11, 0x000000, 0xFFFFFF);
         temp_x += 8;
     }
+    //
     klog_status("BOOTED");
 }
 
 static char log_buffer[11][37];
 static int total_logs = 0;
+
+void appname(const char* name) {
+    const char *title = name;
+    int temp_x = 1150;
+    for (int i = 0; title[i] != '\0'; i++) {
+        vesa_draw_char(title[i], temp_x, 690, 0x000000, 0xFFFFFF);
+        temp_x += 8;
+    }
+}
 
 void klog_status(const char *status_str) {
     if (total_logs < 11) {
@@ -401,6 +450,15 @@ void klog_status(const char *status_str) {
             vesa_draw_char(log_buffer[line][i], current_x, current_y, 0x000000, 0xFFFFFF);
             current_x += 8;
         }
+    }
+}
+
+void verse() {
+    const char *title = "DAILY VERSE";
+    int temp_x = 980;
+    for (int i = 0; title[i] != '\0'; i++) {
+        vesa_draw_char(title[i], temp_x, 470, 0x000000, 0xFFFFFF);
+        temp_x += 8;
     }
 }
 

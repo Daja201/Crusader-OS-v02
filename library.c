@@ -2,7 +2,7 @@
 #include "fs.h"
 #include "klog.h"
 void library(void){
-    vesa_clear(0X00001F);
+    vesa_clear(0X000000);
     //
     kklog("This is an simple operating system made by David Zapletal. Github: Daja201");
     kklog("Here is simple library for using this operating system.");
