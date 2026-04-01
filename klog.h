@@ -14,4 +14,6 @@ void klog_green(const char* msg);
 void kklog_green(const char* msg);
 void kklog_red(const char* msg);
 void klog_red(const char* msg);
+void gui();
+
 #endif

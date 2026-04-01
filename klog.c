@@ -5,8 +5,8 @@
 #include "string.h"
 #include <stdarg.h>
 #include "commands.h"
-static uint16_t x_letter;
-static uint16_t y_letter;
+static uint32_t x_letter;
+static uint32_t y_letter;
 
 static void vprintf_internal(const char *fmt, va_list args) {
     char buf[32];
@@ -84,9 +84,9 @@ void klog(const char* msg) {
             x_letter = 0;
             y_letter += 8;
         } else {
-            vesa_draw_char(c, x_letter, y_letter, 0xFFFFFF, 0x000000);
+            vesa_draw_char_34(c, x_letter, y_letter, 0xFFFFFF, 0x000000);
             x_letter += 8;
-            if (x_letter > 1080) {
+            if (x_letter > 960) {
                 x_letter = 0;
                 y_letter += 8;
             }
@@ -188,21 +188,21 @@ static void vprintf_internal_green_kk(const char *fmt, va_list args) {
 }
 
 void logo() {
-    klog_red("                                                                                                           ");
+    klog_red("                                                                                               ");
     cmd_time();
-    klog_red("     __                                                                                                    ");
+    klog_red("     __                                                                                        ");
     drives();
-    kklog_red("   ,/ _~.                          |\\                    ,-||-,     -_-/      ------                       Welcome to Crusader OS      ");
-    kklog_red("  (' /|                       _     \\\\                  ('|||  )   (_ /         ||                         An hobby operating system   ");
-    kklog_red(" ((  ||   ,._-_ \\\\ \\\\  _-_,  < \\,  / \\\\  _-_  ,._-_    (( |||--)) (_ --_   |    ||    |                    made by:                    ");
-    kklog_red(" ((  ||    ||   || || ||_.   /-|| || || || \\\\  ||      (( |||--))   --_ )  |====[]====|                    David Zapletal              ");
-    kklog_red("  ( / |    ||   || ||  ~ || (( || || || ||/    ||       ( / |  )   _/  ))  |    ||    |                                                ");
-    kklog_red("   \\____-  \\\\,  \\\\/\\\\ ,-_-   \\/\\\\  \\\\/  \\\\,/   \\\\,       -____-   (_-_-         ||                                                     ");
-    kklog_red("                                                                              ------                                                   ");
-    kklog_red("                                DEUS VULT                                                                                              ");
-    kklog_red("                                                                                                                                       ");
-    kklog_red("                          Made by github:Daja201                                                                                       ");
-    kklog_red("                                                                                                                                       ");
+    kklog_red("   ,/ _~.                          |\\                    ,-||-,     -_-/      ------           Welcome to Crusader OS   ");
+    kklog_red("  (' /|                       _     \\\\                  ('|||  )   (_ /         ||             An hobby operating system");
+    kklog_red(" ((  ||   ,._-_ \\\\ \\\\  _-_,  < \\,  / \\\\  _-_  ,._-_    (( |||--)) (_ --_   |    ||    |        made by:                 ");
+    kklog_red(" ((  ||    ||   || || ||_.   /-|| || || || \\\\  ||      (( |||--))   --_ )  |====[]====|        David Zapletal           ");
+    kklog_red("  ( / |    ||   || ||  ~ || (( || || || ||/    ||       ( / |  )   _/  ))  |    ||    |                                 ");
+    kklog_red("   \\____-  \\\\,  \\\\/\\\\ ,-_-   \\/\\\\  \\\\/  \\\\,/   \\\\,       -____-   (_-_-         ||                                      ");
+    kklog_red("                                                                              ------                                    ");
+    kklog_red("                                DEUS VULT                                                                               ");
+    kklog_red("                                                                                                                        ");
+    kklog_red("                          Made by github:Daja201                                                                        ");
+    kklog_red("                                                                                                                        ");
 }
 
 void klogf_green(const char *fmt, ...) {
@@ -226,9 +226,9 @@ void klog_green(const char* msg) {
             x_letter = 0;
             y_letter += 8;
         } else {
-            vesa_draw_char(c, x_letter, y_letter, 0x000000, 0x00FF00);
+            vesa_draw_char_34(c, x_letter, y_letter, 0x000000, 0x00FF00);
             x_letter += 8;
-            if (x_letter > 1080) {
+            if (x_letter > 960) {
                 x_letter = 0;
                 y_letter += 8;
             }
@@ -247,9 +247,9 @@ void kklog_green(const char* msg) {
             x_letter = 0;
             y_letter += 8;
         } else {
-            vesa_draw_char(c, x_letter, y_letter, 0x000000, 0x00FF00);
+            vesa_draw_char_34(c, x_letter, y_letter, 0x000000, 0x00FF00);
             x_letter += 8;
-            if (x_letter > 1080) {
+            if (x_letter > 960) {
                 x_letter = 0;
                 y_letter += 8;
             }
@@ -269,9 +269,9 @@ void klog_red(const char* msg) {
             x_letter = 0;
             y_letter += 8;
         } else {
-            vesa_draw_char(c, x_letter, y_letter, 0xFFFFFF, 0xFF0000);
+            vesa_draw_char_34(c, x_letter, y_letter, 0xFFFFFF, 0xFF0000);
             x_letter += 8;
-            if (x_letter > 1080) {
+            if (x_letter > 960) {
                 x_letter = 0;
                 y_letter += 8;
             }
@@ -290,9 +290,9 @@ void kklog_red(const char* msg) {
             x_letter = 0;
             y_letter += 8;
         } else {
-            vesa_draw_char(c, x_letter, y_letter, 0xFFFFFF, 0xFF0000);
+            vesa_draw_char_34(c, x_letter, y_letter, 0xFFFFFF, 0xFF0000);
             x_letter += 8;
-            if (x_letter > 1080) {
+            if (x_letter > 960) {
                 x_letter = 0;
                 y_letter += 8;
             }
@@ -303,4 +303,8 @@ void kklog_red(const char* msg) {
         msg++;
     }
     klog("\n");
+}
+
+void gui() {
+    vesa_draw_ver(960, 0, 720, 0xFFFFFF);
 }
