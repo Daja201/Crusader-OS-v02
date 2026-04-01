@@ -2,7 +2,6 @@
 #include "font.h"
 #include <stdint.h>
 #include <string.h>
-//#include "bioskbd.h"
 
 int vesa_ready = 0;
 static volatile uint8_t *lfb = 0;
@@ -82,7 +81,6 @@ void vesa_demo(void) {
     }
 }
 
-// Pozice našeho grafického kurzoru
 static int vesa_cursor_x = 0;
 static int vesa_cursor_y = 0;
 
@@ -110,3 +108,23 @@ void vesa_print_string(const char *str) {
     }
 }
 
+void vesa_draw_hor(int x, int y, int a, uint32_t col ) {
+    for(int b = 0; b < a; b ++) {
+        vesa_putpixel(x + b, y, col);
+    }   
+}
+
+void vesa_draw_ver(int x, int y, int a, uint32_t col ) {
+    for(int b = 0; b < a; b ++) {
+        vesa_putpixel(x , y + b, col);
+    }   
+}
+
+void vesa_draw_rec(int x, int y, int width, int height, uint32_t col ) {
+    for(int d = 0; d < height; d ++) {
+        for(int c = 0; c < width; c ++) {
+            vesa_putpixel(x + c, y + d, col);
+        }
+    }  
+       
+}

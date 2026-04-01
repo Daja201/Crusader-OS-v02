@@ -11,36 +11,25 @@ LD_FLAGS = -m elf_i386 -T link.ld
 
 # files
 ASM = loader.s
-C_SRC = kernel.c vesa.c bootinfo.c klog.c bioskbd.c terminal.c commands.c string.c reboot.c fs.c diskinfo.c  library.c libdiv.c rtc.c font.c #vga.c #vga13.c
-OBJ = loader.o kernel.o vesa.o bootinfo.o klog.o bioskbd.o terminal.o commands.o string.o reboot.o fs.o diskinfo.o  library.o libdiv.o rtc.o font.o #vga.o #vga13.o
+C_SRC = kernel.c vesa.c bootinfo.c klog.c bioskbd.c terminal.c commands.c string.c reboot.c fs.c diskinfo.c  library.c libdiv.c rtc.c font.c
+OBJ = loader.o kernel.o vesa.o bootinfo.o klog.o bioskbd.o terminal.o commands.o string.o reboot.o fs.o diskinfo.o  library.o libdiv.o rtc.o font.o
 ISO_DIR = iso
 GRUB_DIR = $(ISO_DIR)/boot/grub
-STAGE2 = ./stage2_eltorito
 ISO = os.iso
-MENU = ./menu.lst
 KERNEL = ./kernel.elf
 
-# main target
 all: $(ISO)
 
-# compile assembly
 loader.o: loader.s
 	$(NASM) $(NASM_FLAGS) loader.s -o loader.o
 
-# compile C sources
 kernel.o: kernel.c
 	$(CC) $(CFLAGS) kernel.c -o kernel.o
-
-vga.o: vga.c
-	$(CC) $(CFLAGS) vga.c -o vga.o
-
-vga13.o: vga13.c vga13.h
-	$(CC) $(CFLAGS) vga13.c -o vga13.o
 
 klog.o: klog.c
 	$(CC) $(CFLAGS) klog.c -o klog.o
 
-bioskbd.o: bioskbd.c bioskbd.h vga.h 
+bioskbd.o: bioskbd.c bioskbd.h
 	$(CC) $(CFLAGS) bioskbd.c -o bioskbd.o
 
 libdiv.o: libdiv.c
@@ -48,10 +37,9 @@ libdiv.o: libdiv.c
 font.o: font.c
 	$(CC) $(CFLAGS) font.c -o font.o
 
-# link kernel
 kernel.elf: $(OBJ)
 	$(LD) $(LD_FLAGS) $(OBJ) -o $(KERNEL)
-#iso build
+
 $(ISO): $(KERNEL)
 	rm -rf $(ISO_DIR)
 	mkdir -p $(ISO_DIR)/boot/grub
@@ -70,18 +58,16 @@ $(ISO): $(KERNEL)
 
 	#GRAPHICAL MODE
 	echo "menuentry 'Crusader OS' {" >> $(ISO_DIR)/boot/grub/grub.cfg
-	echo "  set gfxpayload=1600x900x32" >> $(ISO_DIR)/boot/grub/grub.cfg
+	echo "  set gfxpaylo1080x720x32" >> $(ISO_DIR)/boot/grub/grub.cfg
 	echo "  multiboot /boot/kernel.elf" >> $(ISO_DIR)/boot/grub/grub.cfg
 	echo "  boot" >> $(ISO_DIR)/boot/grub/grub.cfg
 	echo "}" >> $(ISO_DIR)/boot/grub/grub.cfg
 	grub-mkrescue -o $(ISO) $(ISO_DIR)
 	
 	echo "MAKE HAS DONE EVERYTHING FOR YOU, DRIVE SIZE: 128MB"
-# clean
 clean:
 	rm -f *.o $(KERNEL) $(ISO)
 	rm -rf $(ISO_DIR)
-# run
 run:
 	qemu-system-i386 -cdrom os.iso -drive file=disk.img,format=raw,index=0,media=disk -m 512M -vga std -serial stdio
 dd32:
@@ -92,10 +78,9 @@ dd4:
 	dd if=/dev/zero of=disk.img bs=1M count=4 status=progress
 hd:
 	hexdump -C disk.img | less
-#WHOLE MAKE CYCLE
 a:
 	make clean
 	make dd128
 	make 
 	make run
-	echo (((((MAKE HAS DONE EVERYTHING FOR YOU, DRIVE SIZE: 128MB)))))
+	echo MAKE HAS DONE EVERYTHING FOR YOU, DRIVE SIZE: 128MB

@@ -1,5 +1,4 @@
 #include "bioskbd.h"
-#include "vga.h"
 #include "font.h"
 
 int vesa_cursor_x = 0;
@@ -23,32 +22,9 @@ static const char map[128] = {
     '\t','q','w','e','r','t','y','u','i','o','p','[',']','\n',
     0,'a','s','d','f','g','h','j','k','l',';','\'','`',0,'\\','z',
     'x','c','v','b','n','m',',','.','/',0, '*',0,' '};
-    
-/*
-void vesa_print_char(char c) {
-    if (c == '\n') {
-        vesa_cursor_x = 0;
-        vesa_cursor_y += 8;
-        return;
-    }
-    vesa_draw_char(c, vesa_cursor_x, vesa_cursor_y, 0xFFFFFF, 0x0000FF);
-    
-    vesa_cursor_x += 8;
-
-    if (vesa_cursor_x >= boot_fb_width) {
-        vesa_cursor_x = 0;
-        vesa_cursor_y += 8;
-    }
-}
-
-void vesa_print_string(const char *str) {
-    for (int i = 0; str[i] != '\0'; i++) {
-        vesa_print_char(str[i]);
-    }
-}
-*/
 
 char bios_getchar_echo(void)
+
 {
     unsigned char sc;
     char c = 0;

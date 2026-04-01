@@ -11,7 +11,7 @@
 - 32 bit atp
 - runs well in qemu-i386
 - hasn't been tested on real HW yet
-- use klog for screen printing basic text and kklog for printing without /n after every ("")
+- With v18, vesa graphics mode also came and it works perfectly
 - runs in ring0
 
 ## Dependencies:
@@ -25,6 +25,7 @@
 - [x] terminal
 - [x] custom filesystem
 - [x] keyboard support
+- [x] GUI
 - [ ] usb support
 - [ ] sound support
 - [ ] txt editors
@@ -33,16 +34,12 @@
 - [ ] linked communication between Crusader-OS devices
 - [ ] custom programming language
 - [ ] some games 
-- [ ] GUI
 - [ ] Ethernet smart docking station conection
 - [ ] CD-DVD music/movies support
 
 ## Commands inside OS
 - **lib** to get more commands and info
 - help → help yourself lol :3
-- rt → kinda interesting test thing for functionality testing of new functions etc...
-- reboot → makes triple fault to CPU
-- ld → info about drive
 - and much more...
 
 ## Filesystem

@@ -1,8 +1,0 @@
-default=0
-timeout=5
-
-title Crusader OS (VESA mode)
-kernel /boot/kernel.elf
-
-title Crusader OS (text mode fallback)
-kernel /boot/kernel.elf text

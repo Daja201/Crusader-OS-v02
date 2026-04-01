@@ -1,5 +1,4 @@
-#include "vga.h"
-//#include "vga13.h"
+//#include "vga.h"
 #include "klog.h"
 #include "bioskbd.h"
 #include "terminal.h"
@@ -7,6 +6,8 @@
 #include "rtc.h"
 #include "string.h"
 #include "vesa.h"
+#include "commands.h"
+#include "bootinfo.h"
 
 void kmain(unsigned long mb_magic, unsigned long mb_info) {
     parse_multiboot((uint32_t)mb_magic, (uint32_t)mb_info);
@@ -22,67 +23,13 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
             }
         }
     }
-    //
-
-    //vga_init();
     vesa_init_from_params(boot_fb_addr, boot_fb_width, boot_fb_height, boot_fb_bpp, boot_fb_pitch);
-    
-    /*if (boot_has_fb) {
-        klog("Framebuffer detected by bootloader:");
-        kklogf(" addr=0x%lx", boot_fb_addr);
-        kklogf(" w=%d h=%d bpp=%d pitch=%d\n", boot_fb_width, boot_fb_height, boot_fb_bpp, boot_fb_pitch);
-    } else {
-        klog("No framebuffer info from bootloader; using text mode");
-    }
-    */
-
-    //terminal_init();
-    //klog("BOOT OK");
-    //
+    logo();
     extern uint8_t *block_bitmap;
-    //
     init_fs();
-    int year, month, day;
-    int hour, min, sec;
-    rtc_get_datetime(&year, &month, &day, &hour, &min, &sec);
-    char b[8];
-    /*klog(""); */
-    klog("RTC: ");
-    itoa(year, b, 10); klog(b);;itoa(month, b, 10);klog(" "); klog(b);itoa(day, b, 10);klog(" "); klog(b); klog(" ");
-    itoa(hour, b, 10); klog(b); klog(":");
-    itoa(min, b, 10); klog(b); klog(":"); 
-    itoa(sec, b, 10); kklog(b);
-    /*vesa_init_from_params(boot_fb_addr, boot_fb_width, boot_fb_height, boot_fb_bpp, boot_fb_pitch);
-    */
-
-    //if (boot_has_fb) {    
-    
-        /*  vesa_init_from_params(boot_fb_addr, boot_fb_width, boot_fb_height, boot_fb_bpp, boot_fb_pitch);
-        for (int y = 0; y < boot_fb_height; y++) {
-            for (int x = 0; x < boot_fb_width; x++) {
-                vesa_putpixel(x, y, 0x000000FF); // Blue!
-            }
-        } */
-
-    //kklog("FRAMEBUFFER DETECTED");
-    kklog("KERNEL BOOT OKAY");
-    kklog("WELCOME TO CRUSADER OS");
-    
-    for(int b = 0; b < 100; b ++) {
-        vesa_putpixel(100 + b, 100, 0x00FF00);
-    }   
-    for(int b = 0; b < 100; b ++) {
-        vesa_putpixel(100, 100 + b, 0x00FF00);
-    }   
-    
-
-        //rectannle lol /*
-    /*vga13_fill_rect(10, 10, 1000, 1000, 15);
-    vga13_swap_buffers(); 
-    //} */
-
     for (;;) {
         char c = bios_getchar_echo();
         terminal_key(c);
     }
 }
+

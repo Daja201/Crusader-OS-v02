@@ -1,9 +1,8 @@
 #include "commands.h"
 #include "terminal.h"
-#include "vga.h"
-//#include "vga13.h"
 #include <string.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <cpuid.h>
 #include "reboot.h"
 #include "diskinfo.h"
@@ -14,22 +13,20 @@
 #include "fs.h"
 #include "rtc.h"
 #include "vesa.h"
-// pure commands inside lore lol <3
 
 void cmd_help(int argc, char** argv) {
-    klog("Welcome to Crusader OS makde by David Zapletal");
-    klog("Source code shoould be available on: https://github.com/Daja201/Crusader-OS-v02");
-    klog("Feel free to copy and change source code for yourself.");
-    klog("Run command: 'lib' for info about commands and whole system.");
+    kklog("Welcome to Crusader OS makde by David Zapletal");
+    kklog("Source code shoould be available on: https://github.com/Daja201/Crusader-OS-v02");
+    kklog("Feel free to copy and change source code for yourself.");
+    kklog("Run command: 'lib' for info about commands and whole system.");
 }
 
 void busy_ms(int ms) {
-            volatile unsigned int iter = 8000 * ms;
-            for (volatile unsigned int i = 0; i < iter; i++) asm volatile ("nop");
-        }
+    volatile unsigned int iter = 8000 * ms;
+    for (volatile unsigned int i = 0; i < iter; i++) asm volatile ("nop");
+}
 
 //YAII FINALLY JUPMING COW (Thanks to Lujza <3 for whole idea)
-
 void cmd_cow(int argc, char** argv) {
     for (int i = 0; i < 10; i++) {
         const char *cow[] = {
@@ -46,19 +43,15 @@ void cmd_cow(int argc, char** argv) {
             int l = (int)strlen(cow[i]);
             if (l > cow_width) cow_width = l;
         }
-
-        const int screen_w = 900;
-        const int screen_h = 1600;
+        const int screen_w = 720;
+        const int screen_h = 1080;
         int x = (screen_w - cow_width) / 2;
-        
         if (x < 0) x = 0;
         int top_y = 1;
         int bottom_y = screen_h - cow_lines;
         const int total_ms = 6000;     
         const int frames_per_jump = 40;    
         const int ms_per_frame = (total_ms / 2) / frames_per_jump; 
-        
-
         for (int step = 0; step <= frames_per_jump; step++) {
             int y = (top_y * (frames_per_jump - step) + bottom_y * step + frames_per_jump/2) / frames_per_jump;
             vesa_clear(0x000000);
@@ -70,7 +63,6 @@ void cmd_cow(int argc, char** argv) {
             }
             busy_ms(ms_per_frame);
         }
-
         for (int step = frames_per_jump; step >= 0; step--) {
             int y = (top_y * (frames_per_jump - step) + bottom_y * step + frames_per_jump/2) / frames_per_jump;
             vesa_clear(0x000000);
@@ -84,10 +76,6 @@ void cmd_cow(int argc, char** argv) {
         }
     return;
     }
-    
-
-
-//
 
 void cmd_cat(int argc, char** argv) {
     const char *cat =
@@ -115,23 +103,19 @@ void cmd_clear(int argc, char** argv) {
 }
 
 void cmd_reboot(int argc, char** argv) {
-    klog("reboot in process\n");
+    kklog("reboot in process\n");
     reboot_triple_fault();
+    
 }
 
-/*void cmd_runtest(int argc, char** argv) {
-    klog("Trying runtest...\n");
-    runtest_program();
-} */
-
 void cmd_lib(int argc, char** argv) {
-    klog("Welcome to library of Crusader OS:\n");
+    kklog("Welcome to library of Crusader OS:\n");
     library();
 }
 
 void cmd_read(int argc, char** argv) {
     if (argc < 2) {
-        klog("Usage: read <filename>");
+        kklog("Usage: read <filename>");
         return;
     }
     inode_t root;
@@ -139,7 +123,7 @@ void cmd_read(int argc, char** argv) {
 
     int inode_num = dir_lookup(&root, argv[1]);
     if (inode_num < 0) {
-        klog("Error: File not found");
+        kklog("Error: File not found");
         return;
     }
     inode_t file_node;
@@ -151,7 +135,7 @@ void cmd_read(int argc, char** argv) {
     }
     int bytes_read = fs_read(inode_num, &file_node, 0, to_read, buf);
     if (bytes_read <= 0) {
-        klog("Error: Could not read file (or empty)");
+        kklog("Error: Could not read file (or empty)");
         return;
     }
     for (int i = 0; i < bytes_read; i++) {
@@ -168,13 +152,10 @@ void cmd_ls(int argc, char** argv) {
     uint8_t buf[32678];
     struct dirent {
         uint32_t inode;
-        char name[28]; //4 + 28
-        //char tag[28];
+        char name[28];
     };
     int entry_count = 512 / sizeof(struct dirent);
-    klog("Files in root directory:");
-    //klog("777");
-
+    kklog("Files in root directory:");
     for (int b = 0; b < 12; b++) {
         uint32_t block_lba = root.direct[b];
         if (block_lba == 0) break; 
@@ -183,48 +164,46 @@ void cmd_ls(int argc, char** argv) {
         for (int i = 0; i < entry_count; i++) {
             if (entries[i].inode != 0) {
                 inode_t file_node;
-                klog("  ");
+                kklog("  ");
                 klog(entries[i].name);
                 klog(" - ");
                 klog(file_node.main_tag);
                 klog("\n");
-                //CHRIST IS MESSIAH
             }
         }
     }
 }
-//delete func
+
 void cmd_dl(int argc, char** argv) {
     if (argc < 2) {
-        klog("usage: dl <file>");
+        kklog("usage: dl <file>");
         return;
     }
     if (fs_delete_file(argv[1]) < 0) {
-        klog("dl: failed");
+        kklog("dl: failed");
         return;
     }
-    klog("file deleted");
+    kklog("file deleted");
 }
 
 void cmd_wr(int argc, char** argv) {
     if (argc < 3) {
-        klog("Usage: wr <filename> <data>");
+        kklog("Usage: wr <filename> <data>");
         return;
     }
     const char* wr = "wr";
     const char* filename = argv[1]; 
     const char* data = argv[2];
-    //NEEDS TO CREATE INODE before wiritng in it
     uint32_t inode = fs_create_file(filename, wr);
     if ((int32_t)inode < 0) {
-        klog("file creation failed");
+        kklog("file creation failed");
         return;
     }
     int written = fs_write(inode, (const uint8_t*)data, strlen(data));
     if (written < 0) {
-        klog("write failed");
+        kklog("write failed");
     } else {
-        klog("write successful");
+        kklog("write successful");
     }
 }
 
@@ -233,38 +212,18 @@ void cmd_time(int argc, char** argv) {
     int hour, min, sec;
     rtc_get_datetime(&year, &month, &day, &hour, &min, &sec);
     char b[8];
-    klog("RTC: ");
-    itoa(year, b, 10); kklog(b);;itoa(month, b, 10);kklog(" "); kklog(b);itoa(day, b, 10);kklog(" "); kklog(b); kklog(" ");
-    itoa(hour, b, 10); kklog(b); kklog(":");
-    itoa(min, b, 10); kklog(b); kklog(":"); 
-    itoa(sec, b, 10); klog(b);
+    klog_green("RTC: ");
+    itoa(year, b, 10); klog_green(b);;itoa(month, b, 10);klog_green(" "); klog_green(b);itoa(day, b, 10);klog_green(" "); klog_green(b); klog_green(" ");
+    itoa(hour, b, 10); klog_green(b); klog_green(":");
+    itoa(min, b, 10); klog_green(b); klog_green(":"); 
+    itoa(sec, b, 10); klog_green(b);
+    klog_green("\n");
 }
-/*
-void cmd_gui(int argc, char** argv) {
-    /* Prefer VESA LFB if available 
-    if (boot_has_fb) {
-        vesa_init_from_params(boot_fb_addr, boot_fb_width, boot_fb_height, boot_fb_bpp, boot_fb_pitch);
-        vesa_demo();
-    } else {
-        // fallback to mode13 demo if bootloader set it 
-        vga13_init();
-        vga13_demo();
-    }
-}
-*/
+
 void cmd_format(int argc, char** argv) {
     format_fs();
 }
-/*
-void cmd_test() {
-    vesa_clear(0x000000);
-    for (int b = 0; b < 201 ; b++) {
-        //for (int b = 0; b < 10; b++) {
-        klog("C");
-        //}
-    }
-}
-*/
+
 void cmd_find(int argc, char** argv) {
     if (argc < 2) {
         kklogf("usage: find <tag>\n");
@@ -284,7 +243,6 @@ void cmd_find(int argc, char** argv) {
     klog("\n");
 }
 
-// comms table for functions link to comms:
 command_t commands[] = {
     {"help", cmd_help},
     {"clear", cmd_clear},
@@ -299,9 +257,7 @@ command_t commands[] = {
     {"wr", cmd_wr},
     {"dl", cmd_dl},
     {"time", cmd_time},
-    //{"gui", cmd_gui},
-    //{"test", cmd_test},
     {"format", cmd_format}
 };
-//
+
 int command_count = sizeof(commands)/sizeof(command_t);

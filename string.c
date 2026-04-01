@@ -1,4 +1,3 @@
-//MY OWN STRCMP and STRLEN UWU
 #include "string.h"
 
 int strcmp(const char* a, const char* b) {
@@ -14,8 +13,6 @@ size_t strlen(const char* str) {
     while (str[len]) len++;
     return len;
 }
-
-//Just casualy listening to LINkin PARk while writing some C code :3
 
 void *memcpy(void *dest, const void *src, size_t n) {
     unsigned char *d = (unsigned char*)dest;
@@ -35,7 +32,6 @@ char* itoa(int value, char* buffer, int base) {
         buffer[0] = 0;
         return buffer;
     }
-
     char *ptr = buffer;
     char *ptr1 = buffer;
     char tmp_char;
@@ -46,13 +42,11 @@ char* itoa(int value, char* buffer, int base) {
         buffer[1] = 0;
         return buffer;
     }
-
     int sign = 0;
     if (value < 0 && base == 10) {
         sign = 1;
         value = -value;
     }
-
     while (value != 0) {
         tmp_value = value % base;
         *ptr++ = (tmp_value < 10)
@@ -60,18 +54,15 @@ char* itoa(int value, char* buffer, int base) {
             : tmp_value - 10 + 'A';
         value /= base;
     }
-
     if (sign)
         *ptr++ = '-';
 
     *ptr-- = 0;
-
     while (ptr1 < ptr) {
         tmp_char = *ptr;
         *ptr-- = *ptr1;
         *ptr1++ = tmp_char;
     }
-
     return buffer;
 }
 

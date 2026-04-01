@@ -1,8 +1,6 @@
 #ifndef RTC_H
 #define RTC_H
-
 #include <stdint.h>
-
 void rtc_get_datetime(
     int* year,
     int* month,
@@ -11,5 +9,4 @@ void rtc_get_datetime(
     int* min,
     int* sec
 );
-
 #endif

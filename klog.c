@@ -1,13 +1,12 @@
-#include "vga.h"
-//#include "vga13.h"
+#include "bootinfo.h"
 #include "vesa.h"
 #include <stdint.h>
 #include "klog.h"
 #include "string.h"
 #include <stdarg.h>
-
-static uint16_t x_letter; // MAX 1600 /8 = 200
-static uint16_t y_letter; // MAX 900  /8 = 112.5 = 112  
+#include "commands.h"
+static uint16_t x_letter;
+static uint16_t y_letter;
 
 static void vprintf_internal(const char *fmt, va_list args) {
     char buf[32];
@@ -15,7 +14,7 @@ static void vprintf_internal(const char *fmt, va_list args) {
     for (int i = 0; fmt[i] != '\0'; i++) {
         if (fmt[i] != '%') {
             char out[2] = { fmt[i], 0 };
-            klog(out);
+            klog_green(out);
             continue;
         }
         i++;
@@ -23,25 +22,25 @@ static void vprintf_internal(const char *fmt, va_list args) {
             case 'd': {
                 int val = va_arg(args, int);
                 itoa(val, buf, 10);
-                kklog(buf);
+                klog_green(buf);
                 break;
             }
             case 'x': {
                 uint32_t val = va_arg(args, uint32_t);
                 itoa(val, buf, 16);
-                kklog(buf);
+                klog_green(buf);
                 break;
             }
             case 's': {
                 char *s = va_arg(args, char*);
                 if (!s) s = "(null)";
-                kklog(s);
+                klog_green(s);
                 break;
             }
             case 'c': {
                 ch = (char)va_arg(args, int);
                 char out[2] = { ch, 0 };
-                kklog(out);
+                klog_green(out);
                 break;
             }
             case 'l': {
@@ -60,40 +59,34 @@ static void vprintf_internal(const char *fmt, va_list args) {
                         }
                     }
                     buf[idx] = '\0';
-                    kklog(buf);
+                    klog(buf);
                     i += 2; 
                 } else {
-                    kklog("<?>");
+                    klog("<?>");
                 }
                 break;
             }
             case '%':
-                kklog("%");
+                klog("%");
                 break;
             default:
-                kklog("<?>");
+                klog("<?>");
                 break;
         }
     }
 }
 
-//FUnkce na posun po každém znaku
-    //vesa_draw_char('char', X, Y, 0xFFFFFFFF, 0xDB0000);
-//FUnkce na posun řádku po X = 200
-//Funkce na klog atd (možná přepis jenom vezne ísto serial write char)/
-//ostatni klog f-ce
-
-
 void klog(const char* msg) {
     while (*msg != '\0') {
         char c = *msg;
+
         if (c == '\n') {
             x_letter = 0;
             y_letter += 8;
         } else {
-            vesa_draw_char(c, x_letter, y_letter, 0x00FF00, 0x000000);
+            vesa_draw_char(c, x_letter, y_letter, 0xFFFFFF, 0x000000);
             x_letter += 8;
-            if (x_letter >= 600) {
+            if (x_letter > 1080) {
                 x_letter = 0;
                 y_letter += 8;
             }
@@ -111,73 +104,203 @@ void kklog(const char* msg) {
     klog(msg); 
     klog("\n");
 }
+
 void klogf(const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     vprintf_internal(fmt, args);
     va_end(args);
-    //y_letter += 8;
-    
 }
 
 void kklogf(const char *fmt, ...) {
-    klogf(fmt);
-       
+    klogf(fmt);  
 }
 
-/*
-void klog(const char* msg) {
-    x_letter = x_letter + 8;
-    if (x_letter > 200)
-        x_letter = 0;
-        y_letter = y_letter + 1;
-    serial_write_char(msg);
-}
-void klog(const char* msg) {
-    if (vesa_ready) {
-        vesa_print_string(msg);
-        vesa_print_char('\n');
-    } else {
-        print_string(msg);
-        print_char('\n');
-    }
-    serial_write(msg);
-    serial_write("\n");
-}
-// Minimal serial (COM1) output for early boot logging
-static inline void serial_outb(uint16_t port, uint8_t val) {
-    asm volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
-}
-static inline uint8_t serial_inb(uint16_t port) {
-    uint8_t ret;
-    asm volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
-    return ret;
-}
-static void serial_write(const char *str) {
-    while (*str) {
-        serial_write_char(*str++);
-    }
-}
-void kklog(const char* msg) {
-    if (vesa_ready) {
-        vesa_print_string(msg);
-    } else {
-        print_string(msg);
-    }
-    serial_write(msg);
-}
-void klog_hex(uint32_t val) {
+//COLOUR FONTS:
+
+static void vprintf_internal_green_kk(const char *fmt, va_list args) {
     char buf[32];
-    itoa(val, buf, 16);
-    kklog("0x");
-    kklog(buf); 
+    char ch;
+    for (int i = 0; fmt[i] != '\0'; i++) {
+        if (fmt[i] != '%') {
+            char out[2] = { fmt[i], 0 };
+            klog_green(out);
+            continue;
+        }
+        i++;
+        switch (fmt[i]) {
+            case 'd': {
+                int val = va_arg(args, int);
+                itoa(val, buf, 10);
+                kklog_green(buf);
+                break;
+            }
+            case 'x': {
+                uint32_t val = va_arg(args, uint32_t);
+                itoa(val, buf, 16);
+                klog_green(buf);
+                break;
+            }
+            case 's': {
+                char *s = va_arg(args, char*);
+                if (!s) s = "(null)";
+                kklog_green(s);
+                break;
+            }
+            case 'c': {
+                ch = (char)va_arg(args, int);
+                char out[2] = { ch, 0 };
+                kklog_green(out);
+                break;
+            }
+            case 'l': {
+               if (fmt[i+1] == 'l' && fmt[i+2] == 'u') {
+                    unsigned long long v = va_arg(args, unsigned long long);
+                    int idx = 0;
+                    if (v == 0) {
+                        buf[idx++] = '0';
+                    } else {
+                        unsigned long long div = 1;
+                        while (div <= v / 10) div *= 10;
+                        while (div > 0) {
+                            buf[idx++] = '0' + (v / div);
+                            v %= div;
+                            div /= 10;
+                        }
+                    }
+                    buf[idx] = '\0';
+                    klog_green(buf);
+                    i += 2; 
+                } else {
+                    kklog_green("<?>");
+                }
+                break;
+            }
+            case '%':
+                kklog_green("%");
+                break;
+
+            default:
+                kklog_green("<?>");
+                break;
+        }
+    }
 }
-void kklogf(const char *fmt, ...) {
+
+void logo() {
+    klog_red("                                                                                                           ");
+    cmd_time();
+    klog_red("     __                                                                                                    ");
+    drives();
+    kklog_red("   ,/ _~.                          |\\                    ,-||-,     -_-/      ------                       Welcome to Crusader OS      ");
+    kklog_red("  (' /|                       _     \\\\                  ('|||  )   (_ /         ||                         An hobby operating system   ");
+    kklog_red(" ((  ||   ,._-_ \\\\ \\\\  _-_,  < \\,  / \\\\  _-_  ,._-_    (( |||--)) (_ --_   |    ||    |                    made by:                    ");
+    kklog_red(" ((  ||    ||   || || ||_.   /-|| || || || \\\\  ||      (( |||--))   --_ )  |====[]====|                    David Zapletal              ");
+    kklog_red("  ( / |    ||   || ||  ~ || (( || || || ||/    ||       ( / |  )   _/  ))  |    ||    |                                                ");
+    kklog_red("   \\____-  \\\\,  \\\\/\\\\ ,-_-   \\/\\\\  \\\\/  \\\\,/   \\\\,       -____-   (_-_-         ||                                                     ");
+    kklog_red("                                                                              ------                                                   ");
+    kklog_red("                                DEUS VULT                                                                                              ");
+    kklog_red("                                                                                                                                       ");
+    kklog_red("                          Made by github:Daja201                                                                                       ");
+    kklog_red("                                                                                                                                       ");
+}
+
+void klogf_green(const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     vprintf_internal(fmt, args);
     va_end(args);
 }
-void klogf(const char *fmt, ...) {
+
+void kklogf_green(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vprintf_internal_green_kk(fmt, args);
+    va_end(args);
 }
-*/
+
+void klog_green(const char* msg) {
+    while (*msg != '\0') {
+        char c = *msg;
+        if (c == '\n') {
+            x_letter = 0;
+            y_letter += 8;
+        } else {
+            vesa_draw_char(c, x_letter, y_letter, 0x000000, 0x00FF00);
+            x_letter += 8;
+            if (x_letter > 1080) {
+                x_letter = 0;
+                y_letter += 8;
+            }
+        }
+        if (y_letter >= 900) {
+            y_letter = 0;
+        }
+        msg++; 
+    }
+}
+
+void kklog_green(const char* msg) {
+    while (*msg != '\0') {
+        char c = *msg;
+        if (c == '\n') {
+            x_letter = 0;
+            y_letter += 8;
+        } else {
+            vesa_draw_char(c, x_letter, y_letter, 0x000000, 0x00FF00);
+            x_letter += 8;
+            if (x_letter > 1080) {
+                x_letter = 0;
+                y_letter += 8;
+            }
+        }
+        if (y_letter >= 900) {
+            y_letter = 0;
+        }
+        msg++; 
+    }
+    klog("\n");
+}
+
+void klog_red(const char* msg) {
+    while (*msg != '\0') {
+        char c = *msg;
+        if (c == '\n') {
+            x_letter = 0;
+            y_letter += 8;
+        } else {
+            vesa_draw_char(c, x_letter, y_letter, 0xFFFFFF, 0xFF0000);
+            x_letter += 8;
+            if (x_letter > 1080) {
+                x_letter = 0;
+                y_letter += 8;
+            }
+        }
+        if (y_letter >= 900) {
+            y_letter = 0;
+        }
+        msg++;
+    }
+}
+
+void kklog_red(const char* msg) {
+    while (*msg != '\0') {
+        char c = *msg;
+        if (c == '\n') {
+            x_letter = 0;
+            y_letter += 8;
+        } else {
+            vesa_draw_char(c, x_letter, y_letter, 0xFFFFFF, 0xFF0000);
+            x_letter += 8;
+            if (x_letter > 1080) {
+                x_letter = 0;
+                y_letter += 8;
+            }
+        }
+        if (y_letter >= 900) {
+            y_letter = 0;
+        }
+        msg++;
+    }
+    klog("\n");
+}
