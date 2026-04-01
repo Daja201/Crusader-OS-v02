@@ -5,6 +5,17 @@
 #include "string.h"
 #include <stdarg.h>
 #include "commands.h"
+#include <string.h>
+#define MAX_NOTES 15
+#define NAME_LEN 20
+#define CONTENT_LEN 50
+
+typedef struct {
+    char name[NAME_LEN];
+    char content[CONTENT_LEN];
+    int active;
+} Note;
+static Note note_list[MAX_NOTES];
 
 static void vprintf_internal(const char *fmt, va_list args) {
     char buf[32];
@@ -294,6 +305,27 @@ void klog_red(const char* msg) {
     }
 }
 
+void klog_yellow(const char* msg) {
+    while (*msg != '\0') {
+        char c = *msg;
+        if (c == '\n') {
+            c_x = 0;
+            c_y += 8;
+        } else {
+            vesa_draw_char_34(c, c_x, c_y, 0xFFFF00, 0x000000);
+            c_x += 8;
+            if (c_x > 952) {
+                c_x = 0;
+                c_y += 8;
+            }
+        }
+        if (c_y >= 900) {
+            c_y = 0;
+        }
+        msg++;
+    }
+}
+
 void kklog_red(const char* msg) {
     while (*msg != '\0') {
         char c = *msg;
@@ -317,8 +349,117 @@ void kklog_red(const char* msg) {
 }
 
 void gui() {
+    const char *title = "CRUSADER OS";
     vesa_draw_rec(0, 0, 1280, 900, 0x00001F);
     vesa_draw_ver(960, 0, 720, 0xFFFFFF);
     vesa_draw_ver(961, 0, 720, 0xFFFFFF);
     vesa_draw_ver(962, 0, 720, 0xFFFFFF);
+    //
+    vesa_draw_ver(970, 30, 100, 0xFFFFFF);
+    vesa_draw_ver(1270, 30, 100, 0xFFFFFF);
+    vesa_draw_hor(970, 30, 300, 0xFFFFFF);
+    vesa_draw_hor(970, 130, 300, 0xFFFFFF);
+    //
+    vesa_draw_ver(970, 140, 310, 0xFFFFFF);
+    vesa_draw_ver(1270, 140, 310, 0xFFFFFF);
+    vesa_draw_hor(970, 140, 300, 0xFFFFFF);
+    vesa_draw_hor(970, 450, 300, 0xFFFFFF);
+    
+    int temp_x = 970;
+    for (int i = 0; title[i] != '\0'; i++) {
+        vesa_draw_char(title[i], temp_x, 11, 0x000000, 0xFFFFFF);
+        temp_x += 8;
+    }
+    klog_status("BOOTED");
+}
+
+static char log_buffer[11][37];
+static int total_logs = 0;
+
+void klog_status(const char *status_str) {
+    if (total_logs < 11) {
+        strncpy(log_buffer[total_logs], status_str, 37 - 1);
+        log_buffer[total_logs][36] = '\0';
+        total_logs++;
+    } else {
+        for (int i = 0; i < 10; i++) {
+            memcpy(log_buffer[i], log_buffer[i + 1], 37);
+        }
+        strncpy(log_buffer[10], status_str, 37 - 1);
+        log_buffer[10][36] = '\0';
+    }
+    for (int y = 32; y < 32 + (11 * 8); y++) {
+        for (int x = 972; x < 972 + (37 * 8); x++) {
+            vesa_putpixel(x, y, 0x000000);
+        }
+    }
+    for (int line = 0; line < total_logs; line++) {
+        int current_x = 972;
+        int current_y = 32 + (line * 8);
+        
+        for (int i = 0; i < 37 && log_buffer[line][i] != '\0'; i++) {
+            vesa_draw_char(log_buffer[line][i], current_x, current_y, 0x000000, 0xFFFFFF);
+            current_x += 8;
+        }
+    }
+}
+
+void refresh_notes_ui() {
+    for (int y = 141; y < 450; y++) {
+        for (int x = 971; x < 1270; x++) {
+            vesa_putpixel(x, y, 0x000000);
+        }
+    }
+    int start_y = 150;
+    for (int i = 0; i < MAX_NOTES; i++) {
+        if (note_list[i].active) {
+            int curr_x = 975;
+            for(int j=0; note_list[i].name[j] != '\0'; j++) {
+                vesa_draw_char(note_list[i].name[j], curr_x, start_y, 0x000000, 0xFFFF00);
+                curr_x += 8;
+            }
+            vesa_draw_char(':', curr_x, start_y, 0x000000, 0xFFFFFF);
+            curr_x += 16;
+            for(int j=0; note_list[i].content[j] != '\0'; j++) {    
+                if (curr_x + 8 > 1260) {
+                    curr_x = 985; 
+                    start_y += 10;
+                }
+                vesa_draw_char(note_list[i].content[j], curr_x, start_y, 0x000000, 0xFFFFFF);
+                curr_x += 8;
+            }
+            start_y += 14; 
+        }
+    }
+}
+
+void new_note(const char* name, const char* content) {
+    for (int i = 0; i < MAX_NOTES; i++) {
+        if (!note_list[i].active) {
+            strncpy(note_list[i].name, name, NAME_LEN - 1);
+            note_list[i].name[NAME_LEN - 1] = '\0'; 
+            strncpy(note_list[i].content, content, CONTENT_LEN - 1);
+            note_list[i].content[CONTENT_LEN - 1] = '\0';
+            note_list[i].active = 1;
+            refresh_notes_ui();
+            return;
+        }
+    }
+}
+
+void delete_note(const char* name) {
+    for (int i = 0; i < MAX_NOTES; i++) {
+        if (note_list[i].active && strcmp(note_list[i].name, name) == 0) {
+            note_list[i].active = 0;
+            refresh_notes_ui();
+            return;
+        }
+    }
+}
+
+void delete_all_notes() {
+    for (int i = 0; i < MAX_NOTES; i++) {
+        note_list[i].active = 0;
+    }
+    refresh_notes_ui();
 }

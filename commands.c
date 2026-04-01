@@ -15,10 +15,10 @@
 #include "vesa.h"
 
 void cmd_help(int argc, char** argv) {
-    kklog("Welcome to Crusader OS makde by David Zapletal");
-    kklog("Source code shoould be available on: https://github.com/Daja201/Crusader-OS-v02");
-    kklog("Feel free to copy and change source code for yourself.");
-    kklog("Run command: 'lib' for info about commands and whole system.");
+    kklog_red("Welcome to Crusader OS made by David Zapletal");
+    kklog_red("Source code shoould be available on: https://github.com/Daja201/Crusader-OS-v02");
+    kklog_red("Feel free to copy and change source code for yourself.");
+    kklog_red("Run command: 'lib' for info about commands and whole system.");
 }
 
 void busy_ms(int ms) {
@@ -220,6 +220,34 @@ void cmd_time(int argc, char** argv) {
     klog_green("\n");
 }
 
+void cmd_note(int argc, char** argv) {
+    if (argc < 3) {
+        kklog("usage: note <c/d> <name> <content>\n");
+        return;
+    }
+    char action = argv[1][0];
+    const char* name = argv[2];
+    if (action == 'c') {
+        if (argc < 4) {
+            kklog("usage: note c <name> <content>\n");
+            return;
+        }
+        const char* content = argv[3];
+        new_note(name, content);
+    } 
+    else if (action == 'd') {
+        if (strcmp(name, "all") == 0) {
+            delete_all_notes();
+        } 
+        else {
+            delete_note(name);
+        }
+    } 
+    else {
+        kklog("usage: note <c/d> <name> <content>\n"); 
+    }
+}
+
 void cmd_format(int argc, char** argv) {
     format_fs();
 }
@@ -243,6 +271,7 @@ void cmd_find(int argc, char** argv) {
     klog("\n");
 }
 
+
 command_t commands[] = {
     {"help", cmd_help},
     {"clear", cmd_clear},
@@ -257,7 +286,8 @@ command_t commands[] = {
     {"wr", cmd_wr},
     {"dl", cmd_dl},
     {"time", cmd_time},
-    {"format", cmd_format}
+    {"format", cmd_format},
+    {"note", cmd_note}
 };
 
 int command_count = sizeof(commands)/sizeof(command_t);

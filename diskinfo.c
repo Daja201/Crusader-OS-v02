@@ -15,17 +15,17 @@ static inline uint8_t inb(uint16_t port) {
 void detect_disk() {
     uint8_t status = inb(0x1F7);
     if (status == 0xFF || status == 0x00) {
-        kklog("No disk detected on primary ATA");
+        klog("No disk detected on primary ATA");
         return;
     }
     if (status & 0x01) {
-        kklog("Disk error detected");
+        klog("Disk error detected");
         return;
     }
     if (status & 0x40) {
-        kklog("Disk ready (DRDY set)");
+        klog("Disk ready (DRDY set)");
     } else {
-        kklog("Disk not ready");
+        klog("Disk not ready");
     }
 }
 
@@ -73,5 +73,5 @@ void identify_disk() {
         klog("FS superblock total_blocks:");
         kklogf("%llu", (unsigned long long)g_superblock.total_blocks);
     }
-
+    klog("\n");
 }

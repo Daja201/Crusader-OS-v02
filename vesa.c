@@ -84,6 +84,9 @@ void vesa_clear(uint32_t color) {
             vesa_putpixel(x, y, color);
         }
     }
+    c_x = 0;
+    c_y = 0;
+    gui();
 }
 
 void vesa_swap(void) {
@@ -168,5 +171,4 @@ void vesa_draw_rec(int x, int y, int width, int height, uint32_t col ) {
             vesa_putpixel(x + c, y + d, col);
         }
     }  
-       
 }
