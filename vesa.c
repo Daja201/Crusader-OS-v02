@@ -10,10 +10,12 @@ static uint32_t fb_width = 0;
 static uint32_t fb_height = 0;
 static uint32_t fb_bpp = 0;
 static uint32_t fb_pitch = 0;
-
+static uint32_t fb_w_34 = 960;
+ 
 void vesa_init_from_params(uint32_t phys_addr, uint32_t width, uint32_t height, uint32_t bpp, uint32_t pitch) {
     lfb = (volatile uint8_t*)(uintptr_t)phys_addr;
-    fb_width = 1200;
+    fb_width = 1280;
+    fb_w_34 = 960;
     fb_height = height;
     fb_bpp = bpp;
     fb_pitch = pitch ? pitch : (width * ((bpp + 7) / 8));
@@ -27,6 +29,35 @@ static inline void put_pixel_32(int x, int y, uint32_t color) {
     p[1] = (color >> 8) & 0xFF;
     p[2] = (color >> 16) & 0xFF;
     p[3] = (color >> 24) & 0xFF;
+}
+
+void vesa_draw_char_34(char c, int x, int y, uint32_t fg_color, uint32_t bg_color) {
+    if (c < 0 || c > 127) return; 
+    const unsigned char *glyph = font8x8_basic[(int)c];
+    for (int cy = 0; cy < 8; cy++) {
+        unsigned char row = glyph[cy];
+        for (int cx = 0; cx < 8; cx++) {
+            if (row & (1 << cx)) {
+                vesa_putpixel_34(x + cx, y + cy, fg_color);
+            } else {
+                vesa_putpixel_34(x + cx, y + cy, bg_color);
+            }
+        }
+    }
+}
+
+void vesa_putpixel_34(int x, int y, uint32_t color) {
+    if (!vesa_ready) return;
+    if (x < 0 || (uint32_t)x >= 960 || y < 0 || (uint32_t)y >= fb_height) return;
+    if (fb_bpp == 32) put_pixel_32(x,y,color);
+    else if (fb_bpp == 24) {
+        uint8_t *p = (uint8_t*) ( (uintptr_t)lfb + (uintptr_t)y * fb_pitch + (uintptr_t)x * 3 );
+        p[0] = color & 0xFF;
+        p[1] = (color >> 8) & 0xFF;
+        p[2] = (color >> 16) & 0xFF;
+    } else if (fb_bpp == 8) {
+        lfb[y * fb_pitch + x] = (uint8_t)color;
+    }
 }
 
 void vesa_putpixel(int x, int y, uint32_t color) {
