@@ -2,8 +2,9 @@
 #include "commands.h"
 #include "klog.h"
 #include <string.h>
-static char cmd_buf[CMD_BUF_SIZE];
-static int cmd_len = 0;
+
+char cmd_buf[CMD_BUF_SIZE];
+int cmd_len = 0;
 
 void execute_command(char* line) {
     char* argv[8];
@@ -37,6 +38,7 @@ void terminal_key(char c) {
     if (c == '\b') {
         if (cmd_len > 0) {
             cmd_len--;
+            klog("\b");
         }
         return;
     }

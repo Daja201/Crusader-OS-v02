@@ -24,10 +24,10 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
         }
     }
     vesa_init_from_params(boot_fb_addr, boot_fb_width, boot_fb_height, boot_fb_bpp, boot_fb_pitch);
+    gui();
     logo();
     extern uint8_t *block_bitmap;
     init_fs();
-    gui();
     for (;;) {
         char c = bios_getchar_echo();
         terminal_key(c);
