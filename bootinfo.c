@@ -1,5 +1,6 @@
 #include "bootinfo.h"
 #include <stdint.h>
+#include "pmm.h"
 int boot_has_fb = 0;
 uint32_t boot_fb_addr = 0;
 uint32_t boot_fb_width = 0;
@@ -21,6 +22,37 @@ void parse_multiboot(uint32_t mb_magic, uint32_t mb_info) {
     uint32_t flags = mb[0];
     uint8_t *mb_bytes = (uint8_t*)mb;
 
+    pmm_init();
+    pmm_deinit_region(0x0, 0x100000);      // První 1MB (BIOS, VGA paměť, atd.)
+    pmm_deinit_region(0x100000, 0x400000); // 4MB pro samotný Kernel (zhruba)
+
+    // 3. Projdeme Memory Map (pokud nám ji GRUB dal ve flagu 6)
+    if (flags & (1 << 6)) {
+        uint32_t mmap_length = *(uint32_t*)(mb_bytes + 44);
+        uint32_t mmap_addr   = *(uint32_t*)(mb_bytes + 48);
+
+        klogf("Memory map detected: addr=0x%x, len=%d\n", mmap_addr, mmap_length);
+
+        uint32_t current_addr = mmap_addr;
+        while (current_addr < mmap_addr + mmap_length) {
+            uint32_t size = *(uint32_t*)current_addr;
+            uint32_t base_low = *(uint32_t*)(current_addr + 4);
+            uint32_t len_low  = *(uint32_t*)(current_addr + 12);
+            uint32_t type     = *(uint32_t*)(current_addr + 20);
+
+            if (type == 1) { // Typ 1 = Volná, použitelná RAM
+                klogf("  Free RAM: base=0x%x, size=%d bytes\n", base_low, len_low);
+                pmm_init_region(base_low, len_low); // Odemkneme v PMM
+            } else {
+                klogf("  Reserved: base=0x%x, size=%d bytes\n", base_low, len_low);
+            }
+            
+            current_addr += size + 4;
+        }
+    } else {
+        klog("WARNING: No memory map provided by GRUB!\n");
+    }
+    
     if (flags & (1 << 12)) {
         uint32_t fb_addr_lo = *(uint32_t*)(mb_bytes + 88);
         uint32_t pitch      = *(uint32_t*)(mb_bytes + 96);

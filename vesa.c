@@ -3,6 +3,9 @@
 #include <stdint.h>
 #include <string.h>
 
+int c_x = 0;
+int c_y = 0;
+
 int vesa_ready = 0;
 static volatile uint8_t *lfb = 0;
 static uint8_t *back = 0;
@@ -48,7 +51,7 @@ void vesa_draw_char_34(char c, int x, int y, uint32_t fg_color, uint32_t bg_colo
 
 void vesa_putpixel_34(int x, int y, uint32_t color) {
     if (!vesa_ready) return;
-    if (x < 0 || (uint32_t)x >= 960 || y < 0 || (uint32_t)y >= fb_height) return;
+    if (x < 0 || (uint32_t)x >= 952 || y < 0 || (uint32_t)y >= fb_height) return;
     if (fb_bpp == 32) put_pixel_32(x,y,color);
     else if (fb_bpp == 24) {
         uint8_t *p = (uint8_t*) ( (uintptr_t)lfb + (uintptr_t)y * fb_pitch + (uintptr_t)x * 3 );
@@ -75,16 +78,21 @@ void vesa_putpixel(int x, int y, uint32_t color) {
 }
 
 void vesa_clear(uint32_t color) {
+    
     if (!vesa_ready) return;
     for (uint32_t y = 0; y < fb_height; y++) {
         for (uint32_t x = 0; x < fb_width; x++) {
             vesa_putpixel(x, y, color);
         }
     }
+    c_x = 0;
+    c_y = 0;
+    gui();
 }
 
 void vesa_swap(void) {
-    //add double buffer
+    if (!vesa_ready || !back) return;
+    memcpy((void*)lfb, (void*)back, fb_height * fb_pitch);
 }
 
 void vesa_draw_char(char c, int x, int y, uint32_t fg_color, uint32_t bg_color) {
@@ -112,24 +120,32 @@ void vesa_demo(void) {
     }
 }
 
-static int vesa_cursor_x = 0;
-static int vesa_cursor_y = 0;
-
 void vesa_print_char(char c) {
     if (!vesa_ready) return;
-
     if (c == '\n') {
-        vesa_cursor_x = 0;
-        vesa_cursor_y += 8;
+        c_x = 0;
+        c_y += 8;
+        return;
+    }
+    if (c == '\b') {
+        if (c_x >= 8) {
+            c_x -= 8;
+            vesa_draw_rec(c_x, c_y, 8, 8, 0x000000);
+        } else if (c_y >= 8) {
+            c_y -= 8;
+            c_x = 952;
+            vesa_draw_rec(c_x, c_y, 8, 8, 0x000000);
+        }
         return;
     }
     if (c == '\r') return;
-    vesa_draw_char(c, vesa_cursor_x, vesa_cursor_y, 0xFFFFFF, 0x000000);
-    vesa_cursor_x += 8;
-    if ((uint32_t)vesa_cursor_x >= fb_width) {
-        vesa_cursor_x = 0;
-        vesa_cursor_y += 8;
+    
+    if (c_x + 8 > 952) {
+    c_x = 0;
+    c_y += 8;
     }
+    vesa_draw_char(c, c_x, c_y, 0xFFFFFF, 0x000000);
+    c_x += 8;
 }
 
 void vesa_print_string(const char *str) {
@@ -157,5 +173,4 @@ void vesa_draw_rec(int x, int y, int width, int height, uint32_t col ) {
             vesa_putpixel(x + c, y + d, col);
         }
     }  
-       
 }

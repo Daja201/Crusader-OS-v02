@@ -30,13 +30,15 @@ uint8_t inode_bitmap[INODE_BITMAP_SIZE];
 static uint16_t current_ata_base = ATA_PRIMARY;
 static uint8_t current_is_slave = 0;
 fs_device_t g_drives[MAX_DRIVES];
-int g_active_drives = 0;superblock_t g_superblock;
+int g_active_drives = 0;
+superblock_t g_superblock;
 static uint32_t inode_table_blocks = 0;
 static uint32_t block_bitmap_sectors = 0;
 static uint32_t inode_bitmap_sectors = 0;
 static uint32_t block_bitmap_bytes = 0;
 static uint8_t block_bitmap_static[BLOCK_BITMAP_MAX_SIZE];
 uint8_t *block_bitmap = block_bitmap_static;
+int g_current_drive = 0;
 
 static inline void outb(uint16_t port, uint8_t val) {
     asm volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
@@ -156,7 +158,7 @@ void create_root() {
     root.type = 2;
     int b = alloc_block();
     if (b == 0) {
-        klog("create_root: alloc_block failed");
+        kklog("create_root: alloc_block failed");
         return;
     }
     root.direct[0] = (uint32_t)b;
@@ -236,7 +238,7 @@ static uint32_t ata_get_total_sectors_dev(uint16_t base, uint8_t is_slave) {
 void format_fs() {
     g_superblock.magic = 0x5A4C534A;
     g_superblock.block_size = SECTOR_SIZE;
-    g_superblock.total_blocks = g_drives[0].total_sectors;
+    g_superblock.total_blocks = g_drives[g_current_drive].total_sectors;
     g_superblock.inode_count = g_superblock.total_blocks / 4;
     g_superblock.inode_count = (g_superblock.inode_count + 7) & ~7; 
     if (g_superblock.inode_count == 0) g_superblock.inode_count = 8;
@@ -256,7 +258,7 @@ void format_fs() {
         set_block_bitmap_bit(i);
     }
     create_root();
-    klog("FORMATED");
+    klog_status("FORMATTED");
 }
 
 void drives() {
@@ -281,16 +283,17 @@ void drives() {
 void init_fs() {
     if (g_active_drives > 4) g_active_drives = 0;
     if (g_active_drives == 0) {
-        klog("No active drives found");
+        kklog("No active drives found");
         return;
     }
-    select_drive(g_drives[0].ata_base, g_drives[0].is_slave);
+    select_drive(g_drives[g_current_drive].ata_base, g_drives[g_current_drive].is_slave);
     block_read(SUPERBLOCK_LBA, (uint8_t*)&g_superblock);
     const uint32_t FS_MAGIC = 0x5A4C534A;
     if (g_superblock.magic != FS_MAGIC) {
-        klog("No valid filesystem superblock (magic mismatch)");
+        klog_status("No valid filesystem superblock");
         return;
     }
+    //IT HURTS
     block_bitmap_bytes = (uint32_t)((g_superblock.total_blocks + 7) / 8);
     block_bitmap_sectors = (block_bitmap_bytes + SECTOR_SIZE - 1) / SECTOR_SIZE;
     inode_bitmap_sectors = ((g_superblock.inode_count + 7) / 8 + SECTOR_SIZE - 1) / SECTOR_SIZE;
@@ -300,7 +303,7 @@ void init_fs() {
     inode_t root;
     read_inode(ROOT_INODE, &root);
     if (root.type != 2) {
-        klog("Creating root directory");
+        kklog("Creating root directory");
         create_root();
     }
 }
@@ -384,8 +387,17 @@ int dir_add(uint32_t dir_inode_id, inode_t* dir, const char* name, uint32_t inod
             }
         }    
     }
-    klog("ERROR: FULL, MAKE AN INDIRECT BLOCK SUPPORT");
+    kklog("ERROR: FULL, MAKE AN INDIRECT BLOCK SUPPORT");
     return -1;
+}
+
+int fs_change_drive(int drive_id) {
+    if (drive_id < 0 || drive_id >= g_active_drives) {
+        return -1;
+    }
+    g_current_drive = drive_id;
+    init_fs(); 
+    return 0;
 }
 
 int dir_remove(inode_t* dir, const char* name) {

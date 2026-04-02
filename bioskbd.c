@@ -3,6 +3,8 @@
 
 int vesa_cursor_x = 0;
 int vesa_cursor_y = 0;
+static int shift_pressed = 0;
+static int is_extended = 0;
 
 static inline unsigned char inb(unsigned short port)
 {
@@ -17,21 +19,47 @@ static unsigned char read_scancode(void)
     return inb(0x60);
 }
 
-static const char map[128] = {
+static const char map_lower[128] = {
     0, 27, '1','2','3','4','5','6','7','8','9','0','-','=','\b',
     '\t','q','w','e','r','t','y','u','i','o','p','[',']','\n',
     0,'a','s','d','f','g','h','j','k','l',';','\'','`',0,'\\','z',
-    'x','c','v','b','n','m',',','.','/',0, '*',0,' '};
+    'x','c','v','b','n','m',',','.','/',0, '*',0,' ',
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    '7', '8', '9', '-', '4', '5', '6', '+', '1', '2', '3', '0', '.'
+};
 
-char bios_getchar_echo(void)
+static const char map_upper[128] = {
+    0, 27, '!','@','#','$','%','^','&','*','(',')','_','+','\b',
+    '\t','Q','W','E','R','T','Y','U','I','O','P','{','}','\n',
+    0,'A','S','D','F','G','H','J','K','L',':','"','~',0,'|','Z',
+    'X','C','V','B','N','M','<','>','?',0, '*',0,' ',
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    '7', '8', '9', '-', '4', '5', '6', '+', '1', '2', '3', '0', '.'
+};
 
-{
+
+char bios_getchar_echo(void) {
     unsigned char sc;
     char c = 0;
     for (;;) {
         sc = read_scancode();
-        if (sc & 0x80) continue;
-        if (sc < sizeof(map)) c = map[sc];
+        if (sc == 0xE0) {
+            is_extended = 1;
+            continue;
+        }
+        if (sc == 0x2A || sc == 0x36) { shift_pressed = 1; continue; }
+        if (sc == (0x2A | 0x80) || sc == (0x36 | 0x80)) { shift_pressed = 0; continue; }
+        if (sc & 0x80) {
+            is_extended = 0;
+            continue;
+        }
+        if (is_extended) {
+            is_extended = 0;
+            continue; 
+        }
+        if (sc < 128) {
+            c = shift_pressed ? map_upper[sc] : map_lower[sc];
+        }
         if (c == 0) continue;
         if (c == '\b') {
             return '\b';

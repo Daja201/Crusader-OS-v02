@@ -1,4 +1,3 @@
-//#include "vga.h"
 #include "klog.h"
 #include "bioskbd.h"
 #include "terminal.h"
@@ -8,6 +7,7 @@
 #include "vesa.h"
 #include "commands.h"
 #include "bootinfo.h"
+#include "pmm.h"
 
 void kmain(unsigned long mb_magic, unsigned long mb_info) {
     parse_multiboot((uint32_t)mb_magic, (uint32_t)mb_info);
@@ -24,10 +24,16 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
         }
     }
     vesa_init_from_params(boot_fb_addr, boot_fb_width, boot_fb_height, boot_fb_bpp, boot_fb_pitch);
+    gui();
+    c_x = 0;
+    c_y = 0;
     logo();
     extern uint8_t *block_bitmap;
     init_fs();
-    gui();
+    verse();
+    appname("TERMINAL");
+    klog("\n");
+    klog_yellow("CRUSADER>>> ");
     for (;;) {
         char c = bios_getchar_echo();
         terminal_key(c);

@@ -2,8 +2,9 @@
 #include "commands.h"
 #include "klog.h"
 #include <string.h>
-static char cmd_buf[CMD_BUF_SIZE];
-static int cmd_len = 0;
+
+char cmd_buf[CMD_BUF_SIZE];
+int cmd_len = 0;
 
 void execute_command(char* line) {
     char* argv[8];
@@ -22,6 +23,7 @@ void execute_command(char* line) {
             return;
         }
     }
+     
     klog("sorry buddy we don't know this one\n");
 }
 
@@ -30,13 +32,13 @@ void terminal_key(char c) {
         cmd_buf[cmd_len] = 0;
         execute_command(cmd_buf);
         cmd_len = 0;
-        klog("\n");
-        kklog("comm> ");
+        klog_yellow("CRUSADER>>> ");
         return;
     }
     if (c == '\b') {
         if (cmd_len > 0) {
             cmd_len--;
+            klog("\b");
         }
         return;
     }
