@@ -455,14 +455,29 @@ void klog_status(const char *status_str) {
 
 void verse() {
     const char *title = "DAILY VERSE";
+    const char *verse = "For God so loved the world that He gave His only son that everybody who believes in Him would be saved.";
     int temp_x = 980;
     for (int i = 0; title[i] != '\0'; i++) {
-        vesa_draw_char(title[i], temp_x, 470, 0x000000, 0xFFFFFF);
+        vesa_draw_char(title[i], temp_x, 560, 0x000000, 0xFFFFFF);
         temp_x += 8;
+    }
+    int temp_v_y = 569;
+    int temp_v_x = 980;
+    int char_on_line = 0;
+    for (int i = 0; verse[i] != '\0'; i++) {
+        vesa_draw_char(verse[i], temp_v_x, temp_v_y, 0x000000, 0xFFFFFF);
+        temp_v_x += 8;
+        char_on_line++;
+        if (char_on_line >= 34) {
+            temp_v_x = 980;
+            temp_v_y += 10;
+            char_on_line = 0;
+        }
     }
 }
 
 void refresh_notes_ui() {
+
     for (int y = 141; y < 450; y++) {
         for (int x = 971; x < 1270; x++) {
             vesa_putpixel(x, y, 0x000000);

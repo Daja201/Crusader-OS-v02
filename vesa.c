@@ -78,6 +78,7 @@ void vesa_putpixel(int x, int y, uint32_t color) {
 }
 
 void vesa_clear(uint32_t color) {
+    
     if (!vesa_ready) return;
     for (uint32_t y = 0; y < fb_height; y++) {
         for (uint32_t x = 0; x < fb_width; x++) {
@@ -90,7 +91,8 @@ void vesa_clear(uint32_t color) {
 }
 
 void vesa_swap(void) {
-    //add double buffer
+    if (!vesa_ready || !back) return;
+    memcpy((void*)lfb, (void*)back, fb_height * fb_pitch);
 }
 
 void vesa_draw_char(char c, int x, int y, uint32_t fg_color, uint32_t bg_color) {

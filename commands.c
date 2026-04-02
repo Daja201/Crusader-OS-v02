@@ -13,6 +13,7 @@
 #include "fs.h"
 #include "rtc.h"
 #include "vesa.h"
+#include "pmm.h"
 
 void cmd_help(int argc, char** argv) {
     kklog_red("Welcome to Crusader OS made by David Zapletal");
@@ -28,54 +29,65 @@ void busy_ms(int ms) {
 
 //YAII FINALLY JUPMING COW (Thanks to Lujza <3 for whole idea)
 void cmd_cow(int argc, char** argv) {
-    for (int i = 0; i < 10; i++) {
-        const char *cow[] = {
-            "          (__) ",
-            "          (oo) ",
-            "   /-------\\/  ",
-            "  / |     ||   ",
-            " +  ||----||   ",
-            "    ^^    ^^   "
-        };
-        const int cow_lines = sizeof(cow) / sizeof(cow[0]);
-        int cow_width = 0;
-        for (int i = 0; i < cow_lines; i++) {
-            int l = (int)strlen(cow[i]);
-            if (l > cow_width) cow_width = l;
-        }
-        const int screen_w = 720;
-        const int screen_h = 1080;
-        int x = (screen_w - cow_width) / 2;
-        if (x < 0) x = 0;
-        int top_y = 1;
-        int bottom_y = screen_h - cow_lines;
-        const int total_ms = 6000;     
-        const int frames_per_jump = 40;    
-        const int ms_per_frame = (total_ms / 2) / frames_per_jump; 
+    const char *cow[] = {
+        "          (__) ",
+        "          (oo) ",
+        "   /-------\\/  ",
+        "  / |     ||   ",
+        " +  ||----||   ",
+        "    ^^    ^^   "
+    };
+    const int cow_lines = 6;
+    const int char_w = 8;
+    const int char_h = 8;
+    
+    // Calculate cow dimensions in pixels
+    int cow_width_px = 15 * char_w; // "          (__) " is 15 chars
+    
+    // screen_h is likely fb_height (e.g., 768 or 1024)
+    // Based on your vesa.c, your 'terminal' width is 952
+    const int screen_w = 952;
+    const int screen_h = 600; // Adjust to your actual resolution height
+
+    int x_start = (screen_w - cow_width_px) / 2;
+    if (x_start < 0) x_start = 0;
+
+    int top_y = 10;
+    int bottom_y = screen_h - (cow_lines * char_h) - 10;
+    
+    const int frames_per_jump = 20;    
+    const int ms_per_frame = 30; 
+
+    for (int iteration = 0; iteration < 10; iteration++) {
         for (int step = 0; step <= frames_per_jump; step++) {
-            int y = (top_y * (frames_per_jump - step) + bottom_y * step + frames_per_jump/2) / frames_per_jump;
+            int current_y = top_y + ((bottom_y - top_y) * step / frames_per_jump);
             vesa_clear(0x000000);
-            for (int r = 0; r < y; r++) vesa_print_string("\n");
             for (int i = 0; i < cow_lines; i++) {
-                for (int s = 0; s < x; s++) vesa_print_char(' ');
-                vesa_print_string(cow[i]);
-                vesa_print_string("\n");
+                int line_y = current_y + (i * char_h);
+                for (int j = 0; cow[i][j] != '\0'; j++) {
+                    vesa_draw_char(cow[i][j], x_start + (j * char_w), line_y, 0xFFFFFF, 0x000000);
+                }
             }
             busy_ms(ms_per_frame);
         }
         for (int step = frames_per_jump; step >= 0; step--) {
-            int y = (top_y * (frames_per_jump - step) + bottom_y * step + frames_per_jump/2) / frames_per_jump;
-            vesa_clear(0x000000);
-            for (int r = 0; r < y; r++) vesa_print_string("\n");
-            for (int i = 0; i < cow_lines; i++) 
-                for (int s = 0; s < x; s++) vesa_print_char(' ');
-                vesa_print_string(cow[i]);
-                vesa_print_string("\n");
+            int current_y = top_y + ((bottom_y - top_y) * step / frames_per_jump);
+            vesa_clear(0x000000);    
+            for (int i = 0; i < cow_lines; i++) {
+                int line_y = current_y + (i * char_h);
+                for (int j = 0; cow[i][j] != '\0'; j++) {
+                    vesa_draw_char(cow[i][j], x_start + (j * char_w), line_y, 0xFFFFFF, 0x000000);
+                }
             }
             busy_ms(ms_per_frame);
         }
-    return;
     }
+}
+
+void cmd_mem() {
+    uint32_t free_kb = pmm_count_mem();
+    klogf("Volna fyzicka pamet: %d KB (%d MB)\n", free_kb, free_kb / 1024);
+}
 
 void cmd_cat(int argc, char** argv) {
     const char *cat =
@@ -251,6 +263,19 @@ void cmd_format(int argc, char** argv) {
     format_fs();
 }
 
+void cmd_usedisk(int argc, char** argv) {
+    if (argc < 2) {
+        kklog("Usage: use <disk_id>\n");
+        return;
+    }
+    int drive_id = argv[1][0] - '0'; 
+    if (fs_change_drive(drive_id) == 0) {
+        kklogf("Switched to disk %d\n", drive_id);
+    } else {
+        kklog("Error: Invalid disk ID\n");
+    }
+}
+
 void cmd_find(int argc, char** argv) {
     if (argc < 2) {
         kklogf("usage: find <tag>\n");
@@ -286,7 +311,9 @@ command_t commands[] = {
     {"dl", cmd_dl},
     {"time", cmd_time},
     {"format", cmd_format},
-    {"note", cmd_note}
+    {"note", cmd_note},
+    {"use", cmd_usedisk},
+    {"mem", cmd_mem}
 };
 
 int command_count = sizeof(commands)/sizeof(command_t);
