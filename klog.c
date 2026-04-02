@@ -349,6 +349,31 @@ void kklog_red(const char* msg) {
     klog("\n");
 }
 
+void clock() {
+    int hour, min, sec;
+    rtc_get_datetime(&hour, &min, &sec);
+    char b[3];
+    int clock_x = 1180;
+    int clock_y = 11;
+    int time_vals[3] = {hour, min, sec};
+    for (int i = 0; i < 3; i++) {
+        if (time_vals[i] < 10) {
+            vesa_draw_char('0', clock_x, clock_y, 0x2BC7FB, 0x000000);
+            clock_x += 8;
+        }
+        itoa(time_vals[i], b, 10);
+        for (int j = 0; b[j] != '\0'; j++) {
+            vesa_draw_char(b[j], clock_x, clock_y, 0x2BC7FB, 0x000000);
+            clock_x += 8;
+        }
+        if (i < 2) {
+            vesa_draw_char(':', clock_x, clock_y, 0x2BC7FB, 0x000000);
+            clock_x += 8;
+        }
+    }
+}
+
+
 void gui() {
     const char *title = "CRUSADER OS";
     //bckgrnd
@@ -406,11 +431,12 @@ void gui() {
     //
     int temp_x = 970;
     for (int i = 0; title[i] != '\0'; i++) {
-        vesa_draw_char(title[i], temp_x, 11, 0x000000, 0xFFFFFF);
+        vesa_draw_char(title[i], temp_x, 11, 0x2BC7FB, 0x000000);
         temp_x += 8;
     }
     //
     klog_status("BOOTED");
+    clock();
 }
 
 static char log_buffer[11][37];
@@ -420,7 +446,7 @@ void appname(const char* name) {
     const char *title = name;
     int temp_x = 1150;
     for (int i = 0; title[i] != '\0'; i++) {
-        vesa_draw_char(title[i], temp_x, 690, 0x000000, 0xFFFFFF);
+        vesa_draw_char(title[i], temp_x, 690, 0x2BC7FB, 0x000000);
         temp_x += 8;
     }
 }
@@ -447,25 +473,25 @@ void klog_status(const char *status_str) {
         int current_y = 32 + (line * 8);
         
         for (int i = 0; i < 37 && log_buffer[line][i] != '\0'; i++) {
-            vesa_draw_char(log_buffer[line][i], current_x, current_y, 0x000000, 0xFFFFFF);
+            vesa_draw_char(log_buffer[line][i], current_x, current_y, 0x2BC7FB, 0x000000);
             current_x += 8;
         }
     }
 }
 
 void verse() {
-    const char *title = "DAILY VERSE";
+    const char *adress = "John 3:16";
     const char *verse = "For God so loved the world that He gave His only son that everybody who believes in Him would be saved.";
     int temp_x = 980;
-    for (int i = 0; title[i] != '\0'; i++) {
-        vesa_draw_char(title[i], temp_x, 560, 0x000000, 0xFFFFFF);
+    for (int i = 0; adress[i] != '\0'; i++) {
+        vesa_draw_char(adress[i], temp_x, 560, 0x4040FF, 0x000000);
         temp_x += 8;
     }
     int temp_v_y = 569;
     int temp_v_x = 980;
     int char_on_line = 0;
     for (int i = 0; verse[i] != '\0'; i++) {
-        vesa_draw_char(verse[i], temp_v_x, temp_v_y, 0x000000, 0xFFFFFF);
+        vesa_draw_char(verse[i], temp_v_x, temp_v_y, 0x2BC7FB, 0x000000);
         temp_v_x += 8;
         char_on_line++;
         if (char_on_line >= 34) {
@@ -477,7 +503,6 @@ void verse() {
 }
 
 void refresh_notes_ui() {
-
     for (int y = 141; y < 450; y++) {
         for (int x = 971; x < 1270; x++) {
             vesa_putpixel(x, y, 0x000000);

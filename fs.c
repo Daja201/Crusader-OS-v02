@@ -258,7 +258,7 @@ void format_fs() {
         set_block_bitmap_bit(i);
     }
     create_root();
-    kklog("FORMATTED");
+    klog_status("FORMATTED");
 }
 
 void drives() {
@@ -290,9 +290,10 @@ void init_fs() {
     block_read(SUPERBLOCK_LBA, (uint8_t*)&g_superblock);
     const uint32_t FS_MAGIC = 0x5A4C534A;
     if (g_superblock.magic != FS_MAGIC) {
-        kklog("No valid filesystem superblock (magic mismatch)");
+        klog_status("No valid filesystem superblock");
         return;
     }
+    //IT HURTS
     block_bitmap_bytes = (uint32_t)((g_superblock.total_blocks + 7) / 8);
     block_bitmap_sectors = (block_bitmap_bytes + SECTOR_SIZE - 1) / SECTOR_SIZE;
     inode_bitmap_sectors = ((g_superblock.inode_count + 7) / 8 + SECTOR_SIZE - 1) / SECTOR_SIZE;
