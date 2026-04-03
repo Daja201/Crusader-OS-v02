@@ -218,13 +218,11 @@ void cmd_ls(int argc, char** argv) {
         for (int i = 0; i < entry_count; i++) {
             if (entries[i].inode != 0) {
                 inode_t file_node;
-                kklog("  ");
+                klog("  ");
                 klog(entries[i].name);
-                klog(" - ");
-                klog(file_node.main_tag);
-                klog("\n");
             }
         }
+        klog("\n");
     }
 }
 
@@ -335,7 +333,6 @@ void cmd_usedisk(int argc, char** argv) {
         kklog("Usage: use <drive_index>\n       use <port> <0|1> (port: 0=primary,1=secondary or 0x1F0/0x170)\n");
         return;
     }
-
     if (argc == 2) {
         int drive_index = atoi(argv[1]);
         if (drive_index < 0 || drive_index >= g_active_drives) {
@@ -344,26 +341,20 @@ void cmd_usedisk(int argc, char** argv) {
         }
         if (fs_change_drive(drive_index) == 0) {
             select_drive(g_drives[drive_index].ata_base, g_drives[drive_index].is_slave);
-            klogf("Switched to drive index %d\n", drive_index);
-            klogf("Current drive now: %d (requested %d)\n", g_current_drive, drive_index);
+            klogf("Current drive now: %d", g_current_drive);
         } else {
             kklog("Error: Failed to change drive\n");
         }
         return;
     }
-
-    // argc >= 3: explicit port and slave/master selection
     const char* port_arg = argv[1];
     const char* unit_arg = argv[2];
     uint16_t base = 0;
     if (strcmp(port_arg, "0") == 0) base = 0x1F0;
     else if (strcmp(port_arg, "1") == 0) base = 0x170;
     else base = (uint16_t)strtol(port_arg, NULL, 0);
-
     int slave = 0;
     if (unit_arg[0] == '1' || strcasecmp(unit_arg, "slave") == 0 || strcasecmp(unit_arg, "s") == 0) slave = 1;
-
-    // Try to find a matching detected drive
     int found = -1;
     for (int i = 0; i < g_active_drives; i++) {
         if (g_drives[i].ata_base == base && g_drives[i].is_slave == (uint8_t)slave) { found = i; break; }
@@ -372,14 +363,12 @@ void cmd_usedisk(int argc, char** argv) {
         if (fs_change_drive(found) == 0) {
             select_drive(g_drives[found].ata_base, g_drives[found].is_slave);
             klogf("Switched to drive index %d\n", found);
-            klogf("Current drive now: %d (requested %d)\n", g_current_drive, found);
+            klogf("Current drive now: %d", g_current_drive);
         } else {
             kklog("Error: Failed to change drive\n");
         }
         return;
     }
-
-    // Not found in detected list: select directly and add entry if space
     select_drive(base, (uint8_t)slave);
     if (g_active_drives < MAX_DRIVES) {
         int new_idx = g_active_drives;
@@ -389,7 +378,6 @@ void cmd_usedisk(int argc, char** argv) {
         g_current_drive = new_idx;
         g_active_drives++;
         init_fs();
-        /* re-assert selection using the new index in case init_fs altered globals */
         select_drive(g_drives[new_idx].ata_base, g_drives[new_idx].is_slave);
         g_current_drive = new_idx;
         klogf("Selected ATA base 0x%x slave %d (added as index %d)\n", (uint32_t)base, slave, g_current_drive);

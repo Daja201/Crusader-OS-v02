@@ -381,19 +381,27 @@ void clock() {
     }
 }
 
+static int last_drive = -1; // Přidáno pro sledování změny disku
+
 void free_ram() {
+    static uint32_t last_free_kb = 0; 
     fs_device_t* dev = &g_drives[g_current_drive];
     uint32_t free_kb = pmm_count_mem();
-    if (free_kb == last_free_kb) {
+    if (free_kb == last_free_kb && g_current_drive == last_drive) {
         return;
     }
+    if (g_current_drive != last_drive) {
+        vesa_draw_rec(980, 480, 280, 20, 0x000000); 
+    }
     last_free_kb = free_kb;
+    last_drive = g_current_drive;
     uint32_t free_mb = free_kb / 1024;
     char buf[32];
+    int curr_x;
     int start_x = 980;
     int start_y = 470;
     const char* msg = "Free RAM: ";
-    int curr_x = start_x;
+    curr_x = start_x;
     for (int i = 0; msg[i] != '\0'; i++) {
         vesa_draw_char(msg[i], curr_x, start_y, 0x2BC7FB, 0x000000);
         curr_x += 8;

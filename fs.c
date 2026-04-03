@@ -409,15 +409,11 @@ int dir_add(uint32_t dir_inode_id, inode_t* dir, const char* name, uint32_t inod
 }
 
 int fs_change_drive(int drive_id) {
-    klogf("fs_change_drive: requested %d, g_active_drives=%d\n", drive_id, g_active_drives);
     if (drive_id < 0 || drive_id >= g_active_drives) {
-        klogf("fs_change_drive: invalid index %d\n", drive_id);
         return -1;
     }
     g_current_drive = drive_id;
-    klogf("fs_change_drive: set g_current_drive=%d\n", g_current_drive);
     init_fs(); 
-    klogf("fs_change_drive: after init g_current_drive=%d\n", g_current_drive);
     return 0;
 }
 
