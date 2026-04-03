@@ -66,7 +66,6 @@ char bios_getchar_echo(void) {
         if (c == '\b') {
             return '\b';
         }
-        vesa_print_char(c);
         return c;
     }
 }

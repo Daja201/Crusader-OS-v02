@@ -94,21 +94,24 @@ void klog(const char* msg) {
         char c = *msg;
 
         if (c == '\n') {
+            cursor('e');
             c_x = 0;
             c_y += 8;
         } 
         else if (c == '\b') {
+            cursor('e');    
             if (c_x >= 8) {
                 c_x -= 8;
-                vesa_draw_char_34(' ', c_x, c_y, 0x000000, 0x00001F);
+                vesa_draw_char_34(' ', c_x, c_y, 0x000000, 0x000000); 
             }
             else if (c_y >= 8) {
                 c_y -= 8;
                 c_x = 944;
-                vesa_draw_char_34(' ', c_x, c_y, 0x000000, 0x00001F);
+                vesa_draw_char_34(' ', c_x, c_y, 0x000000, 0x000000);
             }
         }
         else {
+            cursor('e');
             vesa_draw_char_34(c, c_x, c_y, 0xFFFFFF, 0x000000);
             c_x += 8;
             if (c_x > 952) {
@@ -124,6 +127,16 @@ void klog(const char* msg) {
 
         msg++;
     }
+    cursor('d');
+}
+
+void cursor(char func) {
+    if (func == 'e' || func == 'l') {
+        vesa_draw_rec(c_x, c_y, 8, 8, 0x000000);
+    }
+    else {
+        vesa_draw_rec(c_x, c_y + 1, 3, 7, 0xFFFF00);
+    }
 }
 
 void kklog(const char* msg) {
@@ -136,7 +149,7 @@ void klogf(const char *fmt, ...) {
     va_start(args, fmt);
     vprintf_internal(fmt, args);
     va_end(args);
-}
+} 
 
 void kklogf(const char *fmt, ...) {
     klogf(fmt);
@@ -249,6 +262,7 @@ void kklogf_green(const char *fmt, ...) {
 void klog_green(const char* msg) {
     while (*msg != '\0') {
         char c = *msg;
+        cursor('e');
         if (c == '\n') {
             c_x = 0;
             c_y += 8;
@@ -265,11 +279,13 @@ void klog_green(const char* msg) {
         }
         msg++; 
     }
+    cursor('d');
 }
 
 void kklog_green(const char* msg) {
     while (*msg != '\0') {
         char c = *msg;
+        cursor('e');
         if (c == '\n') {
             c_x = 0;
             c_y += 8;
@@ -286,6 +302,7 @@ void kklog_green(const char* msg) {
         }
         msg++; 
     }
+    cursor('d');
     klog("\n");
 }
 
@@ -313,6 +330,7 @@ void klog_red(const char* msg) {
 void klog_yellow(const char* msg) {
     while (*msg != '\0') {
         char c = *msg;
+        cursor('e');
         if (c == '\n') {
             c_x = 0;
             c_y += 8;
@@ -329,11 +347,13 @@ void klog_yellow(const char* msg) {
         }
         msg++;
     }
+    cursor('d');
 }
 
 void kklog_red(const char* msg) {
     while (*msg != '\0') {
         char c = *msg;
+        cursor('e');
         if (c == '\n') {
             c_x = 0;
             c_y += 8;
@@ -350,6 +370,7 @@ void kklog_red(const char* msg) {
         }
         msg++;
     }
+    cursor('e');
     klog("\n");
 }
 
@@ -381,7 +402,7 @@ void clock() {
     }
 }
 
-static int last_drive = -1; // Přidáno pro sledování změny disku
+static int last_drive = -1;
 
 void free_ram() {
     static uint32_t last_free_kb = 0; 
