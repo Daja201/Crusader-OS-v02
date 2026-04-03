@@ -121,8 +121,9 @@ void klog(const char* msg) {
             }
         }
 
-        if (c_y >= 900) {
+        if (c_y >= 720) {
             c_y = 0;
+            vesa_clear(0x000000);
         }
 
         msg++;
@@ -157,7 +158,6 @@ void kklogf(const char *fmt, ...) {
 }
 
 //COLOUR FONTS:
-
 static void vprintf_internal_green_kk(const char *fmt, va_list args) {
     char buf[32];
     char ch;
@@ -267,6 +267,7 @@ void klog_green(const char* msg) {
             c_x = 0;
             c_y += 8;
         } else {
+
             vesa_draw_char_34(c, c_x, c_y, 0x000000, 0x00FF00);
             c_x += 8;
             if (c_x > 952) {
@@ -274,8 +275,9 @@ void klog_green(const char* msg) {
                 c_y += 8;
             }
         }
-        if (c_y >= 900) {
+        if (c_y >= 720) {
             c_y = 0;
+            vesa_clear(0x000000);
         }
         msg++; 
     }
@@ -297,9 +299,10 @@ void kklog_green(const char* msg) {
                 c_y += 8;
             }
         }
-        if (c_y >= 900) {
+        if (c_y >= 720) {
             c_y = 0;
-        }
+            vesa_clear(0x000000);
+        }   
         msg++; 
     }
     cursor('d');
@@ -320,8 +323,9 @@ void klog_red(const char* msg) {
                 c_y += 8;
             }
         }
-        if (c_y >= 900) {
+        if (c_y >= 720) {
             c_y = 0;
+            vesa_clear(0x000000);
         }
         msg++;
     }
@@ -342,8 +346,9 @@ void klog_yellow(const char* msg) {
                 c_y += 8;
             }
         }
-        if (c_y >= 900) {
+        if (c_y >= 720) {
             c_y = 0;
+            vesa_clear(0x000000);
         }
         msg++;
     }
@@ -365,8 +370,9 @@ void kklog_red(const char* msg) {
                 c_y += 8;
             }
         }
-        if (c_y >= 900) {
+        if (c_y >= 720) {
             c_y = 0;
+            vesa_clear(0x000000);
         }
         msg++;
     }
@@ -519,9 +525,6 @@ void gui() {
         vesa_draw_char(title[i], temp_x, 11, 0x2BC7FB, 0x000000);
         temp_x += 8;
     }
-    //
-    klog_status("BOOTED");
-    clock();
 }
 
 static char log_buffer[11][37];

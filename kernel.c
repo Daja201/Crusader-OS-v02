@@ -25,6 +25,9 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
         }
     }
     vesa_init_from_params(boot_fb_addr, boot_fb_width, boot_fb_height, boot_fb_bpp, boot_fb_pitch);
+    extern void init_paging(uint32_t, uint32_t, uint32_t, uint32_t);
+    init_paging(boot_fb_addr, boot_fb_width, boot_fb_height, boot_fb_bpp);
+    
     gui();
     c_x = 0;
     c_y = 0;
@@ -36,7 +39,7 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
     klog("\n");
     klog_yellow("CRUSADER>>> ");
     uint32_t last_tick = 0;
-
+    klog_status("BOOTED");
     for (;;) {
         int needs_redrawing = 0;
         if (bios_has_char()) { 

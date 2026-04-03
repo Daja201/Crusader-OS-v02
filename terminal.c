@@ -10,6 +10,9 @@ void execute_command(char* line) {
     char* argv[8];
     int argc = 0;
     char* p = line;
+    if (line == NULL || line[0] == '\0') {
+        return;
+    }
     while (*p && argc < 8) {
         while (*p == ' ') p++;
         if (!*p) break;
@@ -23,7 +26,6 @@ void execute_command(char* line) {
             return;
         }
     }
-     
     klog("sorry buddy we don't know this one\n");
 }
 
@@ -47,5 +49,9 @@ void terminal_key(char c) {
         cmd_buf[cmd_len++] = c;
         char str[2] = {c, '\0'};
         klog(str); 
+    }
+    if (c_y > 720) {
+        vesa_draw_rec(0, 0, 100, 100, 0xFF0000);
+        vesa_swap();
     }
 }
