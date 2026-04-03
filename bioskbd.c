@@ -13,9 +13,11 @@ static inline unsigned char inb(unsigned short port)
     return ret;
 }
 
-static unsigned char read_scancode(void)
-{
-    while (!(inb(0x64) & 1));
+int bios_has_char(void) {
+    return (inb(0x64) & 1);
+}
+
+static unsigned char read_scancode(void) {
     return inb(0x60);
 }
 
@@ -67,4 +69,22 @@ char bios_getchar_echo(void) {
         vesa_print_char(c);
         return c;
     }
+}
+
+char bios_getchar_nonblocking(void) {
+    if (!bios_has_char()) return 0;
+    unsigned char sc = read_scancode();
+    char c = 0;
+    if (sc == 0xE0) { is_extended = 1; return 0; }
+    if (sc == 0x2A || sc == 0x36) { shift_pressed = 1; return 0; }
+    if (sc == (0x2A | 0x80) || sc == (0x36 | 0x80)) { shift_pressed = 0; return 0; }
+    if (sc & 0x80) { is_extended = 0; return 0; }
+    if (is_extended) { is_extended = 0; return 0; }
+    if (sc < 128) {
+        c = shift_pressed ? map_upper[sc] : map_lower[sc];
+    }
+    if (c != 0) {
+        return c;
+    }
+    return 0;
 }

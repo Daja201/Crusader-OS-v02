@@ -106,6 +106,7 @@ int ata_wait_drq(uint16_t base) {
 }
 
 void block_read(uint32_t lba, uint8_t* buf) {
+    uint8_t drive_bit = current_is_slave ? 0xF0 : 0xE0;
     uint8_t drive_sel = (current_is_slave ? 0xF0 : 0xE0) | ((lba >> 24) & 0x0F);
     outb(current_ata_base + ATA_REG_DRIVE, drive_sel);
     for(int i=0; i<4; i++) inb(current_ata_base + ATA_REG_STATUS);
@@ -213,8 +214,11 @@ void save_block_bitmap() {
 void select_drive(uint16_t base, uint8_t slave) {
     current_ata_base = base;
     current_is_slave = slave;
-    outb(base + ATA_REG_DRIVE, slave ? 0xB0 : 0xA0);
-    for(int i=0; i<4; i++) inb(base + ATA_REG_STATUS);
+    outb(base + ATA_REG_DRIVE, 0xA0 | (slave << 4));
+    for(int i = 0; i < 4; i++) {
+        inb(base + ATA_REG_STATUS);
+    }
+    while (inb(base + ATA_REG_STATUS) & 0x80); 
 }
 
 static uint32_t ata_get_total_sectors_dev(uint16_t base, uint8_t is_slave) {
@@ -236,6 +240,7 @@ static uint32_t ata_get_total_sectors_dev(uint16_t base, uint8_t is_slave) {
 }
 
 void format_fs() {
+    select_drive(g_drives[g_current_drive].ata_base, g_drives[g_current_drive].is_slave);
     g_superblock.magic = 0x5A4C534A;
     g_superblock.block_size = SECTOR_SIZE;
     g_superblock.total_blocks = g_drives[g_current_drive].total_sectors;
@@ -249,7 +254,12 @@ void format_fs() {
     g_superblock.inode_start = g_superblock.bitmap_start + block_bitmap_sectors + inode_bitmap_sectors;
     inode_table_blocks = (uint32_t)((g_superblock.inode_count * INODE_SIZE + SECTOR_SIZE - 1) / SECTOR_SIZE);
     g_superblock.data_start = g_superblock.inode_start + inode_table_blocks;
-    block_write(SUPERBLOCK_LBA, (uint8_t*)&g_superblock);
+    {
+        uint8_t sb_buf[SECTOR_SIZE];
+        for (int i = 0; i < SECTOR_SIZE; i++) sb_buf[i] = 0;
+        memcpy(sb_buf, &g_superblock, sizeof(superblock_t));
+        block_write(SUPERBLOCK_LBA, sb_buf);
+    }
     for (int i = 0; i < BLOCK_BITMAP_MAX_SIZE; i++) block_bitmap[i] = 0;
     for (int i = 0; i < INODE_BITMAP_SIZE; i++) inode_bitmap[i] = 0;
     save_block_bitmap();
@@ -259,6 +269,7 @@ void format_fs() {
     }
     create_root();
     klog_status("FORMATTED");
+    init_fs();
 }
 
 void drives() {
@@ -270,7 +281,9 @@ void drives() {
             if (inb(base + 7) == 0xFF) continue;
             uint32_t sectors = ata_get_total_sectors_dev(base, s);
             if (sectors > 0 && sectors < 0xFFFFFFF) { 
-                kklogf_green("Disk 0x%x, Slave %d", (uint32_t)base, (uint32_t)s);
+                if (g_active_drives == 0) {
+                    kklogf_green("Disk 0x%x, Slave %d", (uint32_t)base, (uint32_t)s);
+                }
                 g_drives[g_active_drives].ata_base = base;
                 g_drives[g_active_drives].is_slave = s;
                 g_drives[g_active_drives].total_sectors = sectors;
@@ -287,7 +300,11 @@ void init_fs() {
         return;
     }
     select_drive(g_drives[g_current_drive].ata_base, g_drives[g_current_drive].is_slave);
-    block_read(SUPERBLOCK_LBA, (uint8_t*)&g_superblock);
+    {
+        uint8_t sb_buf[SECTOR_SIZE];
+        block_read(SUPERBLOCK_LBA, sb_buf);
+        memcpy(&g_superblock, sb_buf, sizeof(superblock_t));
+    }
     const uint32_t FS_MAGIC = 0x5A4C534A;
     if (g_superblock.magic != FS_MAGIC) {
         klog_status("No valid filesystem superblock");

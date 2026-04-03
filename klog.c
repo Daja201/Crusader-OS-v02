@@ -6,10 +6,14 @@
 #include <stdarg.h>
 #include "commands.h"
 #include <string.h>
+#include "diskinfo.h"
+#include "fs.h"
 #define MAX_NOTES 15
 #define NAME_LEN 20
 #define CONTENT_LEN 50
-
+static uint32_t last_free_kb = 0;
+extern fs_device_t g_drives[];
+extern int g_current_drive;
 typedef struct {
     char name[NAME_LEN];
     char content[CONTENT_LEN];
@@ -349,9 +353,13 @@ void kklog_red(const char* msg) {
     klog("\n");
 }
 
+static int last_s = -1; 
+
 void clock() {
-    int hour, min, sec;
-    rtc_get_datetime(&hour, &min, &sec);
+    int year, month, day, hour, min, sec;
+    rtc_get_datetime(&year, &month, &day, &hour, &min, &sec);
+    if (sec == last_s) return;
+    last_s = sec;
     char b[3];
     int clock_x = 1180;
     int clock_y = 11;
@@ -373,6 +381,62 @@ void clock() {
     }
 }
 
+static int last_drive = -1; // Přidáno pro sledování změny disku
+
+void free_ram() {
+    static uint32_t last_free_kb = 0; 
+    fs_device_t* dev = &g_drives[g_current_drive];
+    uint32_t free_kb = pmm_count_mem();
+    if (free_kb == last_free_kb && g_current_drive == last_drive) {
+        return;
+    }
+    if (g_current_drive != last_drive) {
+        vesa_draw_rec(980, 480, 280, 20, 0x000000); 
+    }
+    last_free_kb = free_kb;
+    last_drive = g_current_drive;
+    uint32_t free_mb = free_kb / 1024;
+    char buf[32];
+    int curr_x;
+    int start_x = 980;
+    int start_y = 470;
+    const char* msg = "Free RAM: ";
+    curr_x = start_x;
+    for (int i = 0; msg[i] != '\0'; i++) {
+        vesa_draw_char(msg[i], curr_x, start_y, 0x2BC7FB, 0x000000);
+        curr_x += 8;
+    }
+    itoa(free_mb, buf, 10);
+    for (int i = 0; buf[i] != '\0'; i++) {
+        vesa_draw_char(buf[i], curr_x, start_y, 0xFFFFFF, 0x000000);
+        curr_x += 8;
+    }    
+    const char* unit = " MB";
+    for (int i = 0; unit[i] != '\0'; i++) {
+        vesa_draw_char(unit[i], curr_x, start_y, 0xFFFFFF, 0x000000);
+        curr_x += 8;
+    }
+    uint64_t sectors = dev->total_sectors;
+    uint32_t mb = (uint32_t)((sectors * 512) / (1024 * 1024));
+    int drive_x = 980;
+    int drive_y = 480;
+    const char* d_msg = "Current Disk: ";
+    curr_x = drive_x;
+    for (int i = 0; d_msg[i] != '\0'; i++) {
+        vesa_draw_char(d_msg[i], curr_x, drive_y, 0x2BC7FB, 0x000000);
+        curr_x += 8;
+    }
+    itoa(mb, buf, 10);
+    for (int i = 0; buf[i] != '\0'; i++) {
+        vesa_draw_char(buf[i], curr_x, drive_y, 0xFFFFFF, 0x000000);
+        curr_x += 8;
+    }
+    const char* d_unit = " MB";
+    for (int i = 0; d_unit[i] != '\0'; i++) {
+        vesa_draw_char(d_unit[i], curr_x, drive_y, 0xFFFFFF, 0x000000);
+        curr_x += 8;
+    }
+}
 
 void gui() {
     const char *title = "CRUSADER OS";
@@ -392,7 +456,7 @@ void gui() {
     vesa_draw_ver(1270, 140, 310, 0xFFFFFF);
     vesa_draw_hor(970, 140, 300, 0xFFFFFF);
     vesa_draw_hor(970, 450, 300, 0xFFFFFF);
-    // SONGS ↓, VERSE ↓, CALENDAR + TODO ↓
+    // RAM ↓, VERSE ↓, CALENDAR + TODO ↓
     vesa_draw_ver(970, 460, 200, 0xFFFFFF);
     vesa_draw_ver(1270, 460, 200, 0xFFFFFF);
     vesa_draw_hor(970, 460, 300, 0xFFFFFF);
