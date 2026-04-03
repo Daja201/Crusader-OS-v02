@@ -16,6 +16,7 @@ void kklog_red(const char* msg);
 void klog_red(const char* msg);
 void new_note(const char* name, const char* content);
 void delete_note(const char* name);
+void cursor(char func);
 void gui();
 void delete_all_notes();
 #endif

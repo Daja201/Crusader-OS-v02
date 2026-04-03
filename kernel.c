@@ -47,5 +47,6 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
         clock(); 
         free_ram();
         vesa_swap(); 
+        cursor('d');
     }
 }

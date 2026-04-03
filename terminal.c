@@ -17,7 +17,7 @@ void execute_command(char* line) {
         while (*p && *p != ' ') p++;
         if (*p) *p++ = 0;
     }
-    for (int i = 0; i < command_count; i++) {
+    for (int i = 0; i < command_count; i++) { 
         if (strcmp(argv[0], commands[i].name) == 0) {
             commands[i].func(argc, argv);
             return;
@@ -30,6 +30,7 @@ void execute_command(char* line) {
 void terminal_key(char c) {
     if (c == '\n') {
         cmd_buf[cmd_len] = 0;
+        klog("\n");
         execute_command(cmd_buf);
         cmd_len = 0;
         klog_yellow("CRUSADER>>> ");
@@ -44,5 +45,7 @@ void terminal_key(char c) {
     }
     if (cmd_len < CMD_BUF_SIZE - 1) {
         cmd_buf[cmd_len++] = c;
+        char str[2] = {c, '\0'};
+        klog(str); 
     }
 }
