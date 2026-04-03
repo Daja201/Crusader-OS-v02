@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <cpuid.h>
 #include "reboot.h"
 #include "diskinfo.h"
@@ -14,6 +15,14 @@
 #include "rtc.h"
 #include "vesa.h"
 #include "pmm.h"
+extern fs_device_t g_drives[MAX_DRIVES];
+extern int g_current_drive;
+extern int g_active_drives;
+extern superblock_t g_superblock;
+extern void select_drive(uint16_t base, uint8_t slave);
+extern void block_read(uint32_t lba, uint8_t* buf);
+extern int fs_change_drive(int drive_id);
+extern void init_fs(void);
 
 void cmd_help(int argc, char** argv) {
     kklog_red("Welcome to Crusader OS made by David Zapletal");
@@ -40,14 +49,9 @@ void cmd_cow(int argc, char** argv) {
     const int cow_lines = 6;
     const int char_w = 8;
     const int char_h = 8;
-    
-    // Calculate cow dimensions in pixels
-    int cow_width_px = 15 * char_w; // "          (__) " is 15 chars
-    
-    // screen_h is likely fb_height (e.g., 768 or 1024)
-    // Based on your vesa.c, your 'terminal' width is 952
+    int cow_width_px = 15 * char_w;
     const int screen_w = 952;
-    const int screen_h = 600; // Adjust to your actual resolution height
+    const int screen_h = 600;
 
     int x_start = (screen_w - cow_width_px) / 2;
     if (x_start < 0) x_start = 0;
@@ -86,7 +90,7 @@ void cmd_cow(int argc, char** argv) {
 
 void cmd_mem() {
     uint32_t free_kb = pmm_count_mem();
-    klogf("Volna fyzicka pamet: %d KB (%d MB)\n", free_kb, free_kb / 1024);
+    klogf("Free memory: %d KB (%d MB)\n", free_kb, free_kb / 1024);
 }
 
 void cmd_cat(int argc, char** argv) {
@@ -106,8 +110,47 @@ void cmd_cat(int argc, char** argv) {
 }
 
 void cmd_ld(int argc, char** argv) {
-    detect_disk();
-    identify_disk();
+    if (g_active_drives == 0) {
+        kklog_red("No active drives detected. Run 'drives' or 'init' first.");
+        return;
+    }
+    kklog_green("ALL DRIVES INFO:");
+    int original_drive = g_current_drive;
+    for (int i = 0; i < g_active_drives; i++) {
+        fs_device_t* dev = &g_drives[i];
+        klogf("Drive Index:  %d\n", i);
+        klogf("ATA Base:     0x%x\n", (uint32_t)dev->ata_base);
+        klogf("Type:         %s\n", dev->is_slave ? "Slave" : "Master");
+        uint64_t sectors = dev->total_sectors;
+        uint64_t mb = (sectors * 512) / (1024 * 1024);
+        klogf("Capacity:     %d MB (%d sectors)\n", (uint32_t)mb, (uint32_t)sectors);
+        select_drive(dev->ata_base, dev->is_slave);
+        uint8_t sector_buf[512];
+        block_read(0, sector_buf);
+        superblock_t* temp_sb = (superblock_t*)sector_buf;
+        if (temp_sb->magic == 0x5A4C534A) {
+            if (i == original_drive) {
+                kklog_green("Status:       Formatted [CURRENT]");
+            } else {
+                kklog_green("Status:       Formatted");
+            }
+            klogf("Total Blocks: %d\n", temp_sb->total_blocks);
+            klogf("Inodes:       %d used/total\n", temp_sb->inode_count);
+            klogf("Data Start:   LBA %d\n", temp_sb->data_start);
+        } else {
+            if (i == original_drive) {
+                kklog_red("Status:       NOT FORMATTED [CURRENT]");
+                kklog("use 'format' to format current drive");
+            } else {
+                kklog_red("Status:       NOT FORMATTED");
+            }
+            
+        }    
+        klog("\n");
+        vesa_draw_hor(c_x, c_y + 4, 500, 0xFFFFFF);
+        c_y = c_y + 8;
+    }
+    select_drive(g_drives[original_drive].ata_base, g_drives[original_drive].is_slave);
 }
 
 void cmd_clear(int argc, char** argv) {
@@ -218,6 +261,30 @@ void cmd_wr(int argc, char** argv) {
     }
 }
 
+void cmd_shutdown(int argc, char** argv) {
+    kklog_red("\nPREPARING FS...\n");
+    save_block_bitmap();
+    save_inode_bitmap();
+    busy_ms(1000);
+    asm volatile ("cli");
+    vesa_draw_rec(0, 0, 1280, 1024, 0x000000);    
+    const char* verse = "When you lie down, you will not be afraid. Yes, you will lie down, and your sleep will be sweet. (PRO 3:24)";
+    const char* msg = "IT IS NOW SAFE TO TURN OFF YOUR COMPUTER. GOOD NIGHT :)";
+    int start_x_msg = (1280 - (strlen(msg) * 8)) / 2;
+    int start_y_msg = 350;
+    int start_x_verse = (1280 - (strlen(verse) * 8)) / 2;
+    int start_y_verse = start_y_msg - 20;
+    for(int i = 0; verse[i] != '\0'; i++) {
+        vesa_draw_char(verse[i], start_x_verse + (i * 8), start_y_verse, 0x2BC7FB, 0x000000); 
+    }
+    for(int i = 0; msg[i] != '\0'; i++) {
+        vesa_draw_char(msg[i], start_x_msg + (i * 8), start_y_msg, 0x2BC7FB, 0x000000); 
+    }
+    for (;;) {
+        asm volatile ("hlt");
+    }
+}
+
 void cmd_time(int argc, char** argv) {
     int year, month, day;
     int hour, min, sec;
@@ -264,15 +331,70 @@ void cmd_format(int argc, char** argv) {
 }
 
 void cmd_usedisk(int argc, char** argv) {
-    if (argc < 2) {
-        kklog("Usage: use <disk_id>\n");
+    if (argc < 2 || argv[1] == NULL || argv[1][0] == '\0' || argv[1][0] == ' ') {
+        kklog("Usage: use <drive_index>\n       use <port> <0|1> (port: 0=primary,1=secondary or 0x1F0/0x170)\n");
         return;
     }
-    int drive_id = argv[1][0] - '0'; 
-    if (fs_change_drive(drive_id) == 0) {
-        kklogf("Switched to disk %d\n", drive_id);
+
+    if (argc == 2) {
+        int drive_index = atoi(argv[1]);
+        if (drive_index < 0 || drive_index >= g_active_drives) {
+            kklog("Error: Invalid drive index.\n");
+            return;
+        }
+        if (fs_change_drive(drive_index) == 0) {
+            select_drive(g_drives[drive_index].ata_base, g_drives[drive_index].is_slave);
+            klogf("Switched to drive index %d\n", drive_index);
+            klogf("Current drive now: %d (requested %d)\n", g_current_drive, drive_index);
+        } else {
+            kklog("Error: Failed to change drive\n");
+        }
+        return;
+    }
+
+    // argc >= 3: explicit port and slave/master selection
+    const char* port_arg = argv[1];
+    const char* unit_arg = argv[2];
+    uint16_t base = 0;
+    if (strcmp(port_arg, "0") == 0) base = 0x1F0;
+    else if (strcmp(port_arg, "1") == 0) base = 0x170;
+    else base = (uint16_t)strtol(port_arg, NULL, 0);
+
+    int slave = 0;
+    if (unit_arg[0] == '1' || strcasecmp(unit_arg, "slave") == 0 || strcasecmp(unit_arg, "s") == 0) slave = 1;
+
+    // Try to find a matching detected drive
+    int found = -1;
+    for (int i = 0; i < g_active_drives; i++) {
+        if (g_drives[i].ata_base == base && g_drives[i].is_slave == (uint8_t)slave) { found = i; break; }
+    }
+    if (found >= 0) {
+        if (fs_change_drive(found) == 0) {
+            select_drive(g_drives[found].ata_base, g_drives[found].is_slave);
+            klogf("Switched to drive index %d\n", found);
+            klogf("Current drive now: %d (requested %d)\n", g_current_drive, found);
+        } else {
+            kklog("Error: Failed to change drive\n");
+        }
+        return;
+    }
+
+    // Not found in detected list: select directly and add entry if space
+    select_drive(base, (uint8_t)slave);
+    if (g_active_drives < MAX_DRIVES) {
+        int new_idx = g_active_drives;
+        g_drives[new_idx].ata_base = base;
+        g_drives[new_idx].is_slave = (uint8_t)slave;
+        g_drives[new_idx].total_sectors = 0;
+        g_current_drive = new_idx;
+        g_active_drives++;
+        init_fs();
+        /* re-assert selection using the new index in case init_fs altered globals */
+        select_drive(g_drives[new_idx].ata_base, g_drives[new_idx].is_slave);
+        g_current_drive = new_idx;
+        klogf("Selected ATA base 0x%x slave %d (added as index %d)\n", (uint32_t)base, slave, g_current_drive);
     } else {
-        kklog("Error: Invalid disk ID\n");
+        klogf("Selected ATA base 0x%x slave %d\n", (uint32_t)base, slave);
     }
 }
 
@@ -313,7 +435,8 @@ command_t commands[] = {
     {"format", cmd_format},
     {"note", cmd_note},
     {"use", cmd_usedisk},
-    {"mem", cmd_mem}
+    {"mem", cmd_mem},
+    {"shutdown", cmd_shutdown},
 };
 
 int command_count = sizeof(commands)/sizeof(command_t);

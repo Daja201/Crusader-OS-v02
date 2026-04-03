@@ -8,6 +8,7 @@
 #include "commands.h"
 #include "bootinfo.h"
 #include "pmm.h"
+#include "bioskbd.h"
 
 void kmain(unsigned long mb_magic, unsigned long mb_info) {
     parse_multiboot((uint32_t)mb_magic, (uint32_t)mb_info);
@@ -34,9 +35,17 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
     appname("TERMINAL");
     klog("\n");
     klog_yellow("CRUSADER>>> ");
+    uint32_t last_tick = 0;
+
     for (;;) {
-        char c = bios_getchar_echo();
-        terminal_key(c);
+        int needs_redrawing = 0;
+        if (bios_has_char()) { 
+            char c = bios_getchar_echo(); 
+            terminal_key(c);
+            needs_redrawing = 1;
+        }
+        clock(); 
+        free_ram();
+        vesa_swap(); 
     }
 }
-

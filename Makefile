@@ -69,7 +69,12 @@ clean:
 	rm -f *.o $(KERNEL) $(ISO)
 	rm -rf $(ISO_DIR)
 run:
-	qemu-system-i386 -cdrom os.iso -drive file=disk.img,format=raw,index=0,media=disk -m 512M -vga std -serial stdio
+	qemu-system-i386 -cdrom os.iso \
+		-drive file=disk.img,format=raw,bus=0,unit=0,media=disk \
+		-drive file=disk2.img,format=raw,bus=0,unit=1,media=disk \
+		-m 512M -vga std -serial stdio
+dd_second:
+	dd if=/dev/zero of=disk2.img bs=1M count=64 status=progress
 dd32:
 	dd if=/dev/zero of=disk.img bs=1M count=32 status=progress
 dd128:
@@ -81,6 +86,7 @@ hd:
 a:
 	make clean
 	make dd128
+	make dd_second
 	make 
 	make run
 	echo MAKE HAS DONE EVERYTHING FOR YOU, DRIVE SIZE: 128MB
