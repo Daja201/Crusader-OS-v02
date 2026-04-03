@@ -79,13 +79,12 @@ void vesa_putpixel(int x, int y, uint32_t color) {
 void vesa_clear(uint32_t color) { 
     if (!vesa_ready) return;
     for (uint32_t y = 0; y < fb_height; y++) {
-        for (uint32_t x = 0; x < fb_width; x++) {
+        for (uint32_t x = 0; x < 960; x++) {
             vesa_putpixel(x, y, color);
         }
     }
     c_x = 0;
     c_y = 0;
-    gui();
 }
 
 void vesa_swap(void) {

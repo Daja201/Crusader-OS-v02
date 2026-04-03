@@ -38,6 +38,9 @@ void busy_ms(int ms) {
 
 //YAII FINALLY JUPMING COW (Thanks to Lujza <3 for whole idea)
 void cmd_cow(int argc, char** argv) {
+    vesa_clear(0x000000);
+    vesa_draw_rec(0, 714, 960, 6, 0x00FF00);
+    vesa_swap();
     const char *cow[] = {
         "          (__) ",
         "          (oo) ",
@@ -50,43 +53,46 @@ void cmd_cow(int argc, char** argv) {
     const int char_w = 8;
     const int char_h = 8;
     int cow_width_px = 15 * char_w;
-    const int screen_w = 952;
-    const int screen_h = 600;
-
-    int x_start = (screen_w - cow_width_px) / 2;
+    int x_start = (952 - cow_width_px) / 2;
     if (x_start < 0) x_start = 0;
-
     int top_y = 10;
-    int bottom_y = screen_h - (cow_lines * char_h) - 10;
-    
-    const int frames_per_jump = 20;    
-    const int ms_per_frame = 30; 
+    int bottom_y = 665;
+    const int frames_per_jump = 30;    
+    const int ms_per_frame = 60; 
+    int prev_y = top_y;
 
     for (int iteration = 0; iteration < 10; iteration++) {
         for (int step = 0; step <= frames_per_jump; step++) {
             int current_y = top_y + ((bottom_y - top_y) * step / frames_per_jump);
-            vesa_clear(0x000000);
+            vesa_draw_rec(x_start, prev_y, cow_width_px, cow_lines * char_h, 0x000000);
             for (int i = 0; i < cow_lines; i++) {
                 int line_y = current_y + (i * char_h);
                 for (int j = 0; cow[i][j] != '\0'; j++) {
                     vesa_draw_char(cow[i][j], x_start + (j * char_w), line_y, 0xFFFFFF, 0x000000);
                 }
             }
+            vesa_swap();
             busy_ms(ms_per_frame);
+            prev_y = current_y;
         }
         for (int step = frames_per_jump; step >= 0; step--) {
-            int current_y = top_y + ((bottom_y - top_y) * step / frames_per_jump);
-            vesa_clear(0x000000);    
+            int current_y = top_y + ((bottom_y - top_y) * step / frames_per_jump);    
+            vesa_draw_rec(x_start, prev_y, cow_width_px, cow_lines * char_h, 0x000000);    
             for (int i = 0; i < cow_lines; i++) {
                 int line_y = current_y + (i * char_h);
                 for (int j = 0; cow[i][j] != '\0'; j++) {
                     vesa_draw_char(cow[i][j], x_start + (j * char_w), line_y, 0xFFFFFF, 0x000000);
                 }
             }
+            vesa_swap();
             busy_ms(ms_per_frame);
+            prev_y = current_y;
         }
     }
+    vesa_clear(0x000000);
+    vesa_swap();
 }
+
 
 void cmd_mem() {
     uint32_t free_kb = pmm_count_mem();

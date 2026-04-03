@@ -36,7 +36,7 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
     klog("\n");
     klog_yellow("CRUSADER>>> ");
     uint32_t last_tick = 0;
-
+    klog_status("BOOTED");
     for (;;) {
         int needs_redrawing = 0;
         if (bios_has_char()) { 
