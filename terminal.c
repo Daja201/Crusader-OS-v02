@@ -48,4 +48,8 @@ void terminal_key(char c) {
         char str[2] = {c, '\0'};
         klog(str); 
     }
+    if (c_y > 720) {
+        vesa_draw_rec(0, 0, 100, 100, 0xFF0000);
+        vesa_swap();
+    }
 }

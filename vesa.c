@@ -2,10 +2,8 @@
 #include "font.h"
 #include <stdint.h>
 #include <string.h>
-
 int c_x = 0;
 int c_y = 0;
-
 int vesa_ready = 0;
 static volatile uint8_t *lfb = 0;
 static uint8_t *back = 0;
@@ -25,6 +23,7 @@ void vesa_init_from_params(uint32_t phys_addr, uint32_t width, uint32_t height, 
     back = vesa_backbuffer; 
     vesa_ready = 1;
 }
+
 static inline void put_pixel_32(int x, int y, uint32_t color) {
     uint8_t *p = (uint8_t*) ( (uintptr_t)back + (uintptr_t)y * fb_pitch + (uintptr_t)x * 4 );
     p[0] = color & 0xFF;
