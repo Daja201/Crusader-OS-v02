@@ -10,6 +10,9 @@ void execute_command(char* line) {
     char* argv[8];
     int argc = 0;
     char* p = line;
+    if (line == NULL || line[0] == '\0') {
+        return;
+    }
     while (*p && argc < 8) {
         while (*p == ' ') p++;
         if (!*p) break;
@@ -23,7 +26,6 @@ void execute_command(char* line) {
             return;
         }
     }
-     
     klog("sorry buddy we don't know this one\n");
 }
 
