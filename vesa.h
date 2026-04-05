@@ -15,5 +15,6 @@ void vesa_print_string(const char *str);
 void vesa_draw_ver(int x, int y, int a, uint32_t col );
 void vesa_draw_rec(int x, int y, int width, int height, uint32_t col );
 void vesa_draw_hor(int x, int y, int a, uint32_t col );
+void vesa_swap();
 extern int vesa_ready;
 #endif

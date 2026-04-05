@@ -307,7 +307,7 @@ void init_fs() {
     }
     const uint32_t FS_MAGIC = 0x5A4C534A;
     if (g_superblock.magic != FS_MAGIC) {
-        klog_status("No valid filesystem superblock");
+        klog_status("No valid filesystem superblock", 'r');
         return;
     }
     //IT HURTS

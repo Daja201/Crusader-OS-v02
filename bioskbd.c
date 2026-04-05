@@ -41,6 +41,7 @@ static const char map_upper[128] = {
 
 
 char bios_getchar_echo(void) {
+    /*
     unsigned char sc;
     char c = 0;
     for (;;) {
@@ -67,7 +68,10 @@ char bios_getchar_echo(void) {
             return '\b';
         }
         return c;
+        
     }
+    */
+   return bios_getchar_nonblocking();
 }
 
 char bios_getchar_nonblocking(void) {

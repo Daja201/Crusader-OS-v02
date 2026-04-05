@@ -9,9 +9,11 @@
 #include "bootinfo.h"
 #include "pmm.h"
 #include "bioskbd.h"
+#include "idt.h"
 
 void kmain(unsigned long mb_magic, unsigned long mb_info) {
     parse_multiboot((uint32_t)mb_magic, (uint32_t)mb_info);
+    init_idt();
     uint32_t mb_flags = *(uint32_t*)mb_info;
     if (mb_flags & 4) {
         char *cmdline = (char*)(*(uint32_t*)(mb_info + 16));
@@ -27,7 +29,6 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
     vesa_init_from_params(boot_fb_addr, boot_fb_width, boot_fb_height, boot_fb_bpp, boot_fb_pitch);
     extern void init_paging(uint32_t, uint32_t, uint32_t, uint32_t);
     init_paging(boot_fb_addr, boot_fb_width, boot_fb_height, boot_fb_bpp);
-    
     gui();
     c_x = 0;
     c_y = 0;
@@ -38,18 +39,30 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
     appname("TERMINAL");
     klog("\n");
     klog_yellow("CRUSADER>>> ");
-    uint32_t last_tick = 0;
+    int last_sec = -1;
     klog_status("BOOTED");
+    load_notes_from_disk();
     for (;;) {
         int needs_redrawing = 0;
         if (bios_has_char()) { 
             char c = bios_getchar_echo(); 
-            terminal_key(c);
+            if (c != 0) {
+                terminal_key(c);
+                needs_redrawing = 1;
+            }
             needs_redrawing = 1;
         }
-        clock(); 
-        free_ram();
-        vesa_swap(); 
-        cursor('d');
+        int year, month, day, hour, min, sec;
+        rtc_get_datetime(&year, &month, &day, &hour, &min, &sec);
+        if (sec != last_sec) {
+            last_sec = sec;
+            needs_redrawing = 1;
+        }
+        if (needs_redrawing) {
+            clock(); 
+            free_ram();
+            vesa_swap(); 
+            cursor('d');
+        }
     }
 }
