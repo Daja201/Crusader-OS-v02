@@ -11,15 +11,19 @@ LD_FLAGS = -m elf_i386 -T link.ld
 
 # files
 ASM = loader.s
-C_SRC = kernel.c vesa.c bootinfo.c klog.c bioskbd.c terminal.c commands.c string.c reboot.c fs.c diskinfo.c  library.c libdiv.c rtc.c font.c pmm.c paging.c
-OBJ = loader.o kernel.o vesa.o bootinfo.o klog.o bioskbd.o terminal.o commands.o string.o reboot.o fs.o diskinfo.o  library.o libdiv.o rtc.o font.o pmm.o paging.o
+C_SRC = kernel.c vesa.c bootinfo.c klog.c bioskbd.c terminal.c commands.c string.c reboot.c fs.c diskinfo.c  library.c libdiv.c rtc.c font.c pmm.c paging.c idt.c
+OBJ = loader.o kernel.o vesa.o bootinfo.o klog.o bioskbd.o terminal.o commands.o string.o reboot.o fs.o diskinfo.o  library.o libdiv.o rtc.o font.o pmm.o paging.o idt.o interrupts.o
 ISO_DIR = iso
 GRUB_DIR = $(ISO_DIR)/boot/grub
 ISO = os.iso
 KERNEL = ./kernel.elf
 
 all: $(ISO)
+interrupts.o: interrupts.s
+	$(NASM) $(NASM_FLAGS) interrupts.s -o interrupts.o
 
+idt.o: idt.c idt.h
+	$(CC) $(CFLAGS) idt.c -o idt.o
 loader.o: loader.s
 	$(NASM) $(NASM_FLAGS) loader.s -o loader.o
 
@@ -59,7 +63,7 @@ $(ISO): $(KERNEL)
 
 	#GRAPHICAL MODE
 	echo "menuentry 'Crusader OS' {" >> $(ISO_DIR)/boot/grub/grub.cfg
-	echo "  set gfxpaylo1080x720x32" >> $(ISO_DIR)/boot/grub/grub.cfg
+	echo "  set gfxpayload=1280x720x32" >> $(ISO_DIR)/boot/grub/grub.cfg
 	echo "  multiboot /boot/kernel.elf" >> $(ISO_DIR)/boot/grub/grub.cfg
 	echo "  boot" >> $(ISO_DIR)/boot/grub/grub.cfg
 	echo "}" >> $(ISO_DIR)/boot/grub/grub.cfg
