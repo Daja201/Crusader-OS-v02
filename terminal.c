@@ -30,6 +30,7 @@ void execute_command(char* line) {
 }
 
 void terminal_key(char c) {
+    if (c == 0) return;
     if (c == '\n') {
         cmd_buf[cmd_len] = 0;
         klog("\n");

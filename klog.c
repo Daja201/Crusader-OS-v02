@@ -12,6 +12,7 @@
 #define NAME_LEN 20
 #define CONTENT_LEN 50
 static uint32_t last_free_kb = 0;
+static uint32_t log_colors[11];
 extern fs_device_t g_drives[];
 extern int g_current_drive;
 typedef struct {
@@ -539,29 +540,39 @@ void appname(const char* name) {
     }
 }
 
-void klog_status(const char *status_str) {
+void klog_status(const char *status_str, char color_char) {
+    uint32_t current_color;
+    if (color_char == 'r') {
+        current_color = 0xFF0000;
+
+    } 
+    else if (color_char == 'g'){
+        current_color = 0x00FF00;
+    }
+    else {
+        current_color = 0x2BC7FB;
+    }    
     if (total_logs < 11) {
         strncpy(log_buffer[total_logs], status_str, 37 - 1);
         log_buffer[total_logs][36] = '\0';
+        log_colors[total_logs] = current_color;
         total_logs++;
     } else {
         for (int i = 0; i < 10; i++) {
             memcpy(log_buffer[i], log_buffer[i + 1], 37);
+            log_colors[i] = log_colors[i + 1];
         }
         strncpy(log_buffer[10], status_str, 37 - 1);
         log_buffer[10][36] = '\0';
+        log_colors[10] = current_color;
     }
-    for (int y = 32; y < 32 + (11 * 8); y++) {
-        for (int x = 972; x < 972 + (37 * 8); x++) {
-            vesa_putpixel(x, y, 0x000000);
-        }
-    }
+    vesa_draw_rec(972, 32, 296, 88, 0x000000);
     for (int line = 0; line < total_logs; line++) {
         int current_x = 972;
         int current_y = 32 + (line * 8);
         
         for (int i = 0; i < 37 && log_buffer[line][i] != '\0'; i++) {
-            vesa_draw_char(log_buffer[line][i], current_x, current_y, 0x2BC7FB, 0x000000);
+            vesa_draw_char(log_buffer[line][i], current_x, current_y, log_colors[line], 0x000000);
             current_x += 8;
         }
     }
@@ -628,6 +639,7 @@ void new_note(const char* name, const char* content) {
             note_list[i].content[CONTENT_LEN - 1] = '\0';
             note_list[i].active = 1;
             refresh_notes_ui();
+            save_notes_to_disk();
             return;
         }
     }
@@ -648,4 +660,33 @@ void delete_all_notes() {
         note_list[i].active = 0;
     }
     refresh_notes_ui();
+}
+
+
+///
+
+void save_notes_to_disk() {
+    inode_t root;
+    read_inode(0, &root);
+    int inode_idx = dir_lookup(&root, "notes.cos");
+    if (inode_idx < 0) {
+        inode_idx = fs_create_file("notes.cos", "system");
+    }
+    if (inode_idx >= 0) {
+        fs_write((uint32_t)inode_idx, (uint8_t*)note_list, sizeof(note_list));
+        klog_status("Notes saved to disk", 'g');
+    }
+}
+
+void load_notes_from_disk() {
+    inode_t root;
+    read_inode(0, &root);
+    int inode_idx = dir_lookup(&root, "notes.cos");
+    if (inode_idx >= 0) {
+        inode_t note_inode;
+        read_inode(inode_idx, &note_inode);
+        fs_read((uint32_t)inode_idx, &note_inode, 0, sizeof(note_list), (uint8_t*)note_list);
+        refresh_notes_ui();
+        klog_status("Notes loaded", 'g');
+    }
 }
