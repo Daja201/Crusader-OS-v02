@@ -40,24 +40,6 @@ static uint8_t block_bitmap_static[BLOCK_BITMAP_MAX_SIZE];
 uint8_t *block_bitmap = block_bitmap_static;
 int g_current_drive = 0;
 
-static inline void outb(uint16_t port, uint8_t val) {
-    asm volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
-}
-
-static inline uint8_t inb(uint16_t port) {
-    uint8_t ret;
-    asm volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
-    return ret;
-}
-
-static inline void insw(uint16_t port, void* addr, int words) {
-    asm volatile("rep insw" : "+D"(addr), "+c"(words) : "d"(port) : "memory");
-}
-
-static inline void outsw(uint16_t port, const void* addr, int words) {
-    asm volatile("rep outsw" : "+S"(addr), "+c"(words) : "d"(port));
-}
-
 static int get_block_bitmap_bit(uint32_t idx) {
     if (idx >= g_superblock.total_blocks) return 1;
     uint32_t bits_per_sector = SECTOR_SIZE * 8;

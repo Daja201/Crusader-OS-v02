@@ -10,6 +10,14 @@
 #include "pmm.h"
 #include "bioskbd.h"
 #include "idt.h"
+volatile uint32_t timer_ticks = 0;
+
+void timer_init(uint32_t frequency) {
+    uint32_t divisor = 1193182 / frequency;
+    outb(0x43, 0x36);
+    outb(0x40, (uint8_t)(divisor & 0xFF));
+    outb(0x40, (uint8_t)((divisor >> 8) & 0xFF));
+}
 
 void kmain(unsigned long mb_magic, unsigned long mb_info) {
     parse_multiboot((uint32_t)mb_magic, (uint32_t)mb_info);
@@ -42,6 +50,8 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
     int last_sec = -1;
     klog_status("BOOTED");
     load_notes_from_disk();
+    timer_init(1000);
+    asm volatile("sti");
     for (;;) {
         int needs_redrawing = 0;
         if (bios_has_char()) { 
