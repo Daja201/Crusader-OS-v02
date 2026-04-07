@@ -90,6 +90,8 @@ hd:
 	hexdump -C disk.img | less
 a:
 	make clean
+	rm disk.img
+	rm disk2.img
 	make dd128
 	make dd_second
 	make 

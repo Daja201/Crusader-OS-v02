@@ -1,5 +1,5 @@
 #include "string.h"
-
+#include "stdint.h"
 int strcmp(const char* a, const char* b) {
     while (*a && (*a == *b)) {
         a++;
@@ -132,3 +132,23 @@ int strcasecmp(const char* a, const char* b) {
     }
     return (unsigned char)tolower(*a) - (unsigned char)tolower(*b);
 }
+
+/*
+static inline void outb(uint16_t port, uint8_t val) {
+    asm volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
+}
+
+static inline uint8_t inb(uint16_t port) {
+    uint8_t ret;
+    asm volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
+    return ret;
+}
+
+static inline void insw(uint16_t port, void* addr, int words) {
+    asm volatile("rep insw" : "+D"(addr), "+c"(words) : "d"(port) : "memory");
+}
+
+static inline void outsw(uint16_t port, const void* addr, int words) {
+    asm volatile("rep outsw" : "+S"(addr), "+c"(words) : "d"(port));
+}
+*/
