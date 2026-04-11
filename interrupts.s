@@ -1,6 +1,7 @@
 bits 32
 
 extern fault_handler
+extern schedule_handler
 
 %macro ISR_NOERRCODE 1
   global isr%1
@@ -52,7 +53,7 @@ ISR_NOERRCODE 29
 ISR_ERRCODE   30
 ISR_NOERRCODE 31
 ;
-ISR_NOERRCODE 32
+;ISR_NOERRCODE 32
 ISR_NOERRCODE 33
 ISR_NOERRCODE 34
 ISR_NOERRCODE 35
@@ -89,5 +90,42 @@ isr_common_stub:
     pop ds
     popa
     add esp, 8
-    sti
+    ;sti
+    iret
+
+global isr32
+isr32:
+    cli
+    push byte 0      ; Dummy error kód
+    push byte 32     ; Číslo přerušení (IRQ0)
+
+    pusha            ; Uloží EAX až EDI (8 registrů)
+    push ds          ; Uloží segmenty
+    push es
+    push fs
+    push gs
+
+    mov ax, 0x18     ; Nahraje kernel data segment (ujisti se, že v create_task používáš taky 0x10)
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+
+    push esp         ; Předáme ukazatel na současný zásobník do C
+    call schedule_handler
+    
+    ; eax nyní obsahuje ukazatel na NOVÝ zásobník
+    mov esp, eax     ; <<< PŘEPNUTÍ ZÁSOBNÍKU >>>
+
+    ; POZOR! Žádné "add esp, 4" tady nesmí být! Zničilo by to nový zásobník.
+
+    mov al, 0x20     ; Odeslání EOI (End of Interrupt) do PIC
+    out 0x20, al     ; Pokud toto chybí, timer už znovu netikne
+
+    pop gs           ; Obnovíme segmenty (z NOVÉHO zásobníku)
+    pop fs
+    pop es
+    pop ds
+    popa             ; Obnovíme registry EAX-EDI
+    add esp, 8       ; Přeskočíme chybový kód (0) a číslo (32)
     iret

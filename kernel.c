@@ -10,6 +10,7 @@
 #include "pmm.h"
 #include "bioskbd.h"
 #include "idt.h"
+#include "task.h"
 volatile uint32_t timer_ticks = 0;
 
 void timer_init(uint32_t frequency) {
@@ -18,6 +19,25 @@ void timer_init(uint32_t frequency) {
     outb(0x40, (uint8_t)(divisor & 0xFF));
     outb(0x40, (uint8_t)((divisor >> 8) & 0xFF));
 }
+
+//
+volatile int counter_a = 0;
+volatile int counter_b = 0;
+uint32_t stack1[8192];
+uint32_t stack2[8192];
+void task1() {
+    while (1) {
+        counter_a++;
+        asm volatile("pause" ::: "memory"); 
+    }
+}
+void task2() {
+    while (1) {
+        counter_b++;
+        asm volatile("pause" ::: "memory"); 
+    }
+}
+//
 
 void kmain(unsigned long mb_magic, unsigned long mb_info) {
     parse_multiboot((uint32_t)mb_magic, (uint32_t)mb_info);
@@ -50,7 +70,10 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
     int last_sec = -1;
     klog_status("BOOTED");
     load_notes_from_disk();
-    timer_init(1000);
+    timer_init(1);
+    init_multitasking();
+    create_task(task1, &stack1[8192]);
+    create_task(task2, &stack2[8192]);
     asm volatile("sti");
     for (;;) {
         int needs_redrawing = 0;
@@ -74,5 +97,6 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
             vesa_swap(); 
             cursor('d');
         }
+        asm volatile("hlt");
     }
 }

@@ -11,8 +11,8 @@ LD_FLAGS = -m elf_i386 -T link.ld
 
 # files
 ASM = loader.s
-C_SRC = kernel.c vesa.c bootinfo.c klog.c bioskbd.c terminal.c commands.c string.c reboot.c fs.c diskinfo.c  library.c libdiv.c rtc.c font.c pmm.c paging.c idt.c
-OBJ = loader.o kernel.o vesa.o bootinfo.o klog.o bioskbd.o terminal.o commands.o string.o reboot.o fs.o diskinfo.o  library.o libdiv.o rtc.o font.o pmm.o paging.o idt.o interrupts.o
+C_SRC = kernel.c vesa.c bootinfo.c klog.c bioskbd.c terminal.c commands.c string.c reboot.c fs.c diskinfo.c  library.c libdiv.c rtc.c font.c pmm.c paging.c idt.c task.c
+OBJ = loader.o kernel.o vesa.o bootinfo.o klog.o bioskbd.o terminal.o commands.o string.o reboot.o fs.o diskinfo.o  library.o libdiv.o rtc.o font.o pmm.o paging.o idt.o interrupts.o task.o
 ISO_DIR = iso
 GRUB_DIR = $(ISO_DIR)/boot/grub
 ISO = os.iso
@@ -21,15 +21,14 @@ KERNEL = ./kernel.elf
 all: $(ISO)
 interrupts.o: interrupts.s
 	$(NASM) $(NASM_FLAGS) interrupts.s -o interrupts.o
-
 idt.o: idt.c idt.h
 	$(CC) $(CFLAGS) idt.c -o idt.o
 loader.o: loader.s
 	$(NASM) $(NASM_FLAGS) loader.s -o loader.o
-
+task.o: task.c task.h
+	$(CC) $(CFLAGS) task.c -o task.o
 kernel.o: kernel.c
 	$(CC) $(CFLAGS) kernel.c -o kernel.o
-
 klog.o: klog.c
 	$(CC) $(CFLAGS) klog.c -o klog.o
 
@@ -97,3 +96,6 @@ a:
 	make 
 	make run
 	echo MAKE HAS DONE EVERYTHING FOR YOU, DRIVE SIZE: 128MB
+
+d: 	
+	qemu-system-i386 -cdrom os.iso -no-reboot -d int,cpu_reset
