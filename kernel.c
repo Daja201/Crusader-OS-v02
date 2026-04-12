@@ -70,10 +70,8 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
     int last_sec = -1;
     klog_status("BOOTED");
     load_notes_from_disk();
-    timer_init(1);
+    timer_init(1000);
     init_multitasking();
-    create_task(task1, &stack1[8192]);
-    create_task(task2, &stack2[8192]);
     asm volatile("sti");
     for (;;) {
         int needs_redrawing = 0;
@@ -83,7 +81,6 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
                 terminal_key(c);
                 needs_redrawing = 1;
             }
-            needs_redrawing = 1;
         }
         int year, month, day, hour, min, sec;
         rtc_get_datetime(&year, &month, &day, &hour, &min, &sec);
