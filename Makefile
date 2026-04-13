@@ -76,7 +76,7 @@ run:
 	qemu-system-i386 -cdrom os.iso \
 		-drive file=disk.img,format=raw,bus=0,unit=0,media=disk \
 		-drive file=disk2.img,format=raw,bus=0,unit=1,media=disk \
-		-m 512M -vga std -serial stdio
+		-m 512M -vga std -serial stdio -enable-kvm
 dd_second:
 	dd if=/dev/zero of=disk2.img bs=1M count=64 status=progress
 dd32:
