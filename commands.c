@@ -15,6 +15,7 @@
 #include "rtc.h"
 #include "vesa.h"
 #include "pmm.h"
+#include "app.h"
 extern fs_device_t g_drives[MAX_DRIVES];
 extern int g_current_drive;
 extern int g_active_drives;
@@ -411,6 +412,13 @@ void cmd_find(int argc, char** argv) {
     klog("\n");
 }
 
+void cmd_app(int argc, char** argv) {
+    if (argc < 2) {
+        kklog("Usage: app <app_name>");
+        return;
+    }
+    app(argv[1]);
+}
 
 command_t commands[] = {
     {"help", cmd_help},
@@ -431,6 +439,7 @@ command_t commands[] = {
     {"use", cmd_usedisk},
     {"mem", cmd_mem},
     {"shutdown", cmd_shutdown},
+    {"app", cmd_app},
 };
 
 int command_count = sizeof(commands)/sizeof(command_t);
