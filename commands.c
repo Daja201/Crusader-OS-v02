@@ -118,7 +118,7 @@ void cmd_cat(int argc, char** argv) {
 
 void cmd_ld(int argc, char** argv) {
     if (g_active_drives == 0) {
-        kklog_red("No active drives detected. Run 'drives' or 'init' first.");
+        kklog_red("No active drives detected.");
         return;
     }
     kklog_green("ALL DRIVES INFO:");

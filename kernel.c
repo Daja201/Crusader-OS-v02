@@ -20,80 +20,83 @@ void timer_init(uint32_t frequency) {
     outb(0x40, (uint8_t)((divisor >> 8) & 0xFF));
 }
 
-//
-volatile int counter_a = 0;
-volatile int counter_b = 0;
-uint32_t stack1[8192];
-uint32_t stack2[8192];
-void task1() {
-    while (1) {
-        counter_a++;
-        asm volatile("pause" ::: "memory"); 
-    }
-}
-void task2() {
-    while (1) {
-        counter_b++;
-        asm volatile("pause" ::: "memory"); 
-    }
-}
-//
 
-void kmain(unsigned long mb_magic, unsigned long mb_info) {
-    parse_multiboot((uint32_t)mb_magic, (uint32_t)mb_info);
-    init_idt();
-    uint32_t mb_flags = *(uint32_t*)mb_info;
-    if (mb_flags & 4) {
-        char *cmdline = (char*)(*(uint32_t*)(mb_info + 16));
-        if (cmdline) {
-            for (int i = 0; cmdline[i] != '\0'; i++) {
-                if (cmdline[i] == 't' && cmdline[i+1] == 'e' && cmdline[i+2] == 'x' && cmdline[i+3] == 't') {
-                    boot_has_fb = 0;
-                    break;
-                }
+void system_main_task() {
+    int last_sec = -1;
+    for (;;) {
+        int needs_redraw = 0; // Vlajka, zda máme překreslit monitor
+
+        // 1. Zpracování klávesnice
+        if (bios_has_char()) { 
+            char c = bios_getchar_echo(); 
+            if (c != 0) {
+                terminal_key(c);
+                needs_redraw = 1; // Napsali jsme znak, chceme hned překreslit!
             }
         }
+        
+        // 2. Zpracování času
+        int y, m, d, h, min, sec;
+        rtc_get_datetime(&y, &m, &d, &h, &min, &sec);
+        if (sec != last_sec) {
+            last_sec = sec;
+            clock(); 
+            free_ram();
+            needs_redraw = 1; // Změnil se čas, chceme hned překreslit!
+        }
+
+        // 3. Překreslení obrazovky (mimo IF se sekundami!)
+        if (needs_redraw) {
+            cursor('d');  // Vykreslí kurzor na aktuální pozici
+            vesa_swap();  // Pošle obraz na monitor
+        }
+        
+        asm volatile("pause"); // Šetříme CPU cykly
     }
+}
+
+void kmain(unsigned long mb_magic, unsigned long mb_info) {
+    // 1. Základní nastavení a zjištění paměti
+    parse_multiboot((uint32_t)mb_magic, (uint32_t)mb_info);
+    
+    pmm_init(); 
+    pmm_init_region(0x200000, 0x200000); // Tady dáváme PMM paměť k rozdávání
+
+    // 2. Přerušení a VESA
+    init_idt();
     vesa_init_from_params(boot_fb_addr, boot_fb_width, boot_fb_height, boot_fb_bpp, boot_fb_pitch);
+    
+    // --- TVŮJ PŮVODNÍ GUI KÓD, KTERÝ CHYBĚL ---
     extern void init_paging(uint32_t, uint32_t, uint32_t, uint32_t);
     init_paging(boot_fb_addr, boot_fb_width, boot_fb_height, boot_fb_bpp);
+    
     gui();
     c_x = 0;
     c_y = 0;
     logo();
-    extern uint8_t *block_bitmap;
+    
     init_fs();
     verse();
     appname("TERMINAL");
     klog("\n");
     klog_yellow("CRUSADER>>> ");
-    int last_sec = -1;
     klog_status("BOOTED");
-    load_notes_from_disk();
-    timer_init(1000);
+    // ------------------------------------------
+
+    // 3. Spuštění Multitaskingu
+    timer_init(100); 
     init_multitasking();
+
+    // Vytvoříme hlavní proces (ten se stará o klávesnici a hodiny)
+    create_task(system_main_task); 
+
+    klog_status("MULTITASKING STARTED");
+    
+    // Povolíme přerušení - od teď procesor skáče do isr32 a přepíná
     asm volatile("sti");
-    for (;;) {
-        int needs_redrawing = 0;
-        if (bios_has_char()) { 
-            char c = bios_getchar_echo(); 
-            if (c != 0) {
-                terminal_key(c);
-                needs_redrawing = 1;
-            }
-        }
-        int year, month, day, hour, min, sec;
-        rtc_get_datetime(&year, &month, &day, &hour, &min, &sec);
-        if (sec != last_sec) {
-            last_sec = sec;
-            needs_redrawing = 1;
-        }
-        if (needs_redrawing) {
-            clock(); 
-            free_ram();
-            vesa_swap(); 
-            cursor('d');
-        }
+    
+    // Náš Idle task (hlavní vlákno kernelu), které jen spí
+    while (1) {
         asm volatile("hlt");
     }
 }
