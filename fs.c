@@ -222,6 +222,7 @@ static uint32_t ata_get_total_sectors_dev(uint16_t base, uint8_t is_slave) {
 }
 
 void format_fs() {
+    klog_status("FORMATTING STARTED");
     select_drive(g_drives[g_current_drive].ata_base, g_drives[g_current_drive].is_slave);
     g_superblock.magic = 0x5A4C534A;
     g_superblock.block_size = SECTOR_SIZE;
@@ -252,6 +253,43 @@ void format_fs() {
     create_root();
     klog_status("FORMATTED");
     init_fs();
+}
+
+void qformat_fs(void) {
+    uint8_t zero_sector[SECTOR_SIZE];
+    memset(zero_sector, 0, SECTOR_SIZE);
+    klog_status("QUICK FORMATTING STARTED");
+    block_write(BLOCK_BITMAP_LBA, zero_sector);
+    block_write(INODE_BITMAP_LBA, zero_sector);
+    uint32_t num_inode_blocks = 64; 
+    for (uint32_t i = 0; i < num_inode_blocks; i++) {
+        block_write(INODE_TABLE_LBA + i, zero_sector);
+    }
+    g_superblock.magic = 0x5A4C534A;
+    g_superblock.block_size = SECTOR_SIZE;
+    g_superblock.total_blocks = g_drives[g_current_drive].total_sectors;
+    g_superblock.inode_count = g_superblock.total_blocks / 4;
+    g_superblock.inode_count = (g_superblock.inode_count + 7) & ~7; 
+    if (g_superblock.inode_count == 0) g_superblock.inode_count = 8;
+    g_superblock.bitmap_start = BLOCK_BITMAP_LBA;
+    block_bitmap_bytes = (uint32_t)((g_superblock.total_blocks + 7) / 8);
+    block_bitmap_sectors = (block_bitmap_bytes + SECTOR_SIZE - 1) / SECTOR_SIZE;
+    inode_bitmap_sectors = ((g_superblock.inode_count + 7) / 8 + SECTOR_SIZE - 1) / SECTOR_SIZE;
+    g_superblock.inode_start = g_superblock.bitmap_start + block_bitmap_sectors + inode_bitmap_sectors;
+    inode_table_blocks = (uint32_t)((g_superblock.inode_count * INODE_SIZE + SECTOR_SIZE - 1) / SECTOR_SIZE);
+    g_superblock.data_start = g_superblock.inode_start + inode_table_blocks;
+    uint8_t sb_buf[SECTOR_SIZE];
+    memset(sb_buf, 0, SECTOR_SIZE);
+    memcpy(sb_buf, &g_superblock, sizeof(superblock_t));
+    block_write(SUPERBLOCK_LBA, sb_buf);
+    for (int i = 0; i < BLOCK_BITMAP_MAX_SIZE; i++) block_bitmap[i] = 0;
+    for (int i = 0; i < INODE_BITMAP_SIZE; i++) inode_bitmap[i] = 0;
+    for (uint32_t i = 0; i < g_superblock.data_start; i++) {
+        set_block_bitmap_bit(i);
+    }
+    create_root();
+    init_fs();
+    klog_status("FORMATTED");
 }
 
 void drives() {

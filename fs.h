@@ -69,6 +69,7 @@ int fs_write(uint32_t inode, const uint8_t* data, size_t len);
 uint32_t fs_read(uint32_t inode_idx, inode_t* node, uint32_t offset, uint32_t size, uint8_t* buffer);
 int fs_delete_file(const char* path);
 void format_fs(void);
+void qformat_fs(void);
 int fs_find_by_tag(const char* tag, uint32_t* results, int max_results);
 void drives();
 #endif

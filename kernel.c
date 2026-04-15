@@ -24,78 +24,53 @@ void timer_init(uint32_t frequency) {
 void system_main_task() {
     int last_sec = -1;
     for (;;) {
-        int needs_redraw = 0; // Vlajka, zda máme překreslit monitor
-
-        // 1. Zpracování klávesnice
+        int needs_redraw = 0;
         if (bios_has_char()) { 
             char c = bios_getchar_echo(); 
             if (c != 0) {
                 terminal_key(c);
-                needs_redraw = 1; // Napsali jsme znak, chceme hned překreslit!
+                needs_redraw = 1;
             }
         }
-        
-        // 2. Zpracování času
         int y, m, d, h, min, sec;
         rtc_get_datetime(&y, &m, &d, &h, &min, &sec);
         if (sec != last_sec) {
             last_sec = sec;
             clock(); 
             free_ram();
-            needs_redraw = 1; // Změnil se čas, chceme hned překreslit!
+            needs_redraw = 1;
         }
-
-        // 3. Překreslení obrazovky (mimo IF se sekundami!)
         if (needs_redraw) {
-            cursor('d');  // Vykreslí kurzor na aktuální pozici
-            vesa_swap();  // Pošle obraz na monitor
+            cursor('d');
+            vesa_swap();
         }
-        
-        asm volatile("pause"); // Šetříme CPU cykly
+        asm volatile("pause");
     }
 }
 
 void kmain(unsigned long mb_magic, unsigned long mb_info) {
-    // 1. Základní nastavení a zjištění paměti
     parse_multiboot((uint32_t)mb_magic, (uint32_t)mb_info);
-    
     pmm_init(); 
-    pmm_init_region(0x200000, 0x200000); // Tady dáváme PMM paměť k rozdávání
-
-    // 2. Přerušení a VESA
+    pmm_init_region(0x1000000, 0x1000000);
     init_idt();
     vesa_init_from_params(boot_fb_addr, boot_fb_width, boot_fb_height, boot_fb_bpp, boot_fb_pitch);
-    
-    // --- TVŮJ PŮVODNÍ GUI KÓD, KTERÝ CHYBĚL ---
     extern void init_paging(uint32_t, uint32_t, uint32_t, uint32_t);
     init_paging(boot_fb_addr, boot_fb_width, boot_fb_height, boot_fb_bpp);
-    
     gui();
     c_x = 0;
     c_y = 0;
     logo();
-    
     init_fs();
     verse();
     appname("TERMINAL");
     klog("\n");
     klog_yellow("CRUSADER>>> ");
     klog_status("BOOTED");
-    // ------------------------------------------
-
-    // 3. Spuštění Multitaskingu
     timer_init(100); 
     init_multitasking();
-
-    // Vytvoříme hlavní proces (ten se stará o klávesnici a hodiny)
     create_task(system_main_task); 
-
     klog_status("MULTITASKING STARTED");
-    
-    // Povolíme přerušení - od teď procesor skáče do isr32 a přepíná
     asm volatile("sti");
-    
-    // Náš Idle task (hlavní vlákno kernelu), které jen spí
     while (1) {
         asm volatile("hlt");
     }

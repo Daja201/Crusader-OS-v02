@@ -469,7 +469,7 @@ void free_ram() {
 void gui() {
     const char *title = "CRUSADER OS";
     //bckgrnd
-    vesa_draw_rec(0, 0, 1280, 900, 0x000000);
+    vesa_draw_rec(0, 0, 1280, 720, 0x000000);
     //JUST A LINE * 3 ↓
     vesa_draw_ver(960, 0, 720, 0xFFFFFF);
     vesa_draw_ver(961, 0, 720, 0xFFFFFF);
