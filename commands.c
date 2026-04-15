@@ -118,7 +118,7 @@ void cmd_cat(int argc, char** argv) {
 
 void cmd_ld(int argc, char** argv) {
     if (g_active_drives == 0) {
-        kklog_red("No active drives detected. Run 'drives' or 'init' first.");
+        kklog_red("No active drives detected.");
         return;
     }
     kklog_green("ALL DRIVES INFO:");
@@ -332,7 +332,11 @@ void cmd_note(int argc, char** argv) {
 }
 
 void cmd_format(int argc, char** argv) {
-    format_fs();
+    create_task(format_fs);
+}
+
+void cmd_qformat(int argc, char** argv) {
+    qformat_fs();
 }
 
 void cmd_usedisk(int argc, char** argv) {
@@ -435,6 +439,7 @@ command_t commands[] = {
     {"dl", cmd_dl},
     {"time", cmd_time},
     {"format", cmd_format},
+    {"qformat", cmd_qformat},
     {"note", cmd_note},
     {"use", cmd_usedisk},
     {"mem", cmd_mem},

@@ -12,7 +12,6 @@ static uint32_t fb_height = 0;
 static uint32_t fb_bpp = 0;
 static uint32_t fb_pitch = 0;
 static uint32_t fb_w_34 = 960;
-static uint8_t vesa_backbuffer[1280 * 900 * 4]; 
 
 void vesa_init_from_params(uint32_t phys_addr, uint32_t width, uint32_t height, uint32_t bpp, uint32_t pitch) {
     lfb = (volatile uint8_t*)(uintptr_t)phys_addr;
@@ -20,16 +19,16 @@ void vesa_init_from_params(uint32_t phys_addr, uint32_t width, uint32_t height, 
     fb_height = height;
     fb_bpp = bpp;
     fb_pitch = pitch ? pitch : (width * ((bpp + 7) / 8));
-    back = vesa_backbuffer; 
+    back = (uint8_t *)0x800000;  
     vesa_ready = 1;
 }
 
 static inline void put_pixel_32(int x, int y, uint32_t color) {
-    uint8_t *p = (uint8_t*) ( (uintptr_t)back + (uintptr_t)y * fb_pitch + (uintptr_t)x * 4 );
-    p[0] = color & 0xFF;
-    p[1] = (color >> 8) & 0xFF;
-    p[2] = (color >> 16) & 0xFF;
-    p[3] = (color >> 24) & 0xFF;
+    if (x < 0 || x >= 1280 || y < 0 || y >= 720) return;
+    uint32_t offset = (y * fb_pitch) + (x * (fb_bpp / 8));
+    if (offset >= (1280 * 900 * 4)) return; 
+    uint32_t *p = (uint32_t*)(back + offset);
+    *p = color;
 }
 
 void vesa_draw_char_34(char c, int x, int y, uint32_t fg_color, uint32_t bg_color) {

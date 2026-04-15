@@ -15,7 +15,7 @@ typedef struct {
     task_state_t state; 
     uint32_t *page_directory;
 } task_t;
-void create_task(void (*entry_point)(), uint32_t *stack_top);
+void create_task(void (*entry_point)());
 uint32_t schedule_handler(uint32_t esp);
 void init_multitasking();
 #endif
