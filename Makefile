@@ -11,8 +11,8 @@ LD_FLAGS = -m elf_i386 -T link.ld
 
 # files
 ASM = loader.s
-C_SRC = kernel.c vesa.c bootinfo.c klog.c bioskbd.c terminal.c commands.c string.c reboot.c fs.c diskinfo.c  library.c libdiv.c rtc.c font.c pmm.c paging.c idt.c task.c app.c
-OBJ = loader.o kernel.o vesa.o bootinfo.o klog.o bioskbd.o terminal.o commands.o string.o reboot.o fs.o diskinfo.o  library.o libdiv.o rtc.o font.o pmm.o paging.o idt.o interrupts.o task.o app.o
+C_SRC = kernel.c vesa.c bootinfo.c klog.c bioskbd.c terminal.c commands.c string.c reboot.c fs.c diskinfo.c  library.c libdiv.c rtc.c font.c pmm.c paging.c idt.c task.c app.c pci.c ac97.c speaker.c
+OBJ = loader.o kernel.o vesa.o bootinfo.o klog.o bioskbd.o terminal.o commands.o string.o reboot.o fs.o diskinfo.o  library.o libdiv.o rtc.o font.o pmm.o paging.o idt.o interrupts.o task.o app.o pci.o ac97.o speaker.o
 ISO_DIR = iso
 GRUB_DIR = $(ISO_DIR)/boot/grub
 ISO = os.iso
@@ -76,6 +76,7 @@ run:
 	qemu-system-i386 -cdrom os.iso \
 		-drive file=disk.img,format=raw,bus=0,unit=0,media=disk \
 		-drive file=disk2.img,format=raw,bus=0,unit=1,media=disk \
+		-audiodev pa,id=snd0 -device ac97,audiodev=snd0 \
 		-m 512M -vga std -serial stdio -enable-kvm
 dd_second:
 	dd if=/dev/zero of=disk2.img bs=1M count=64 status=progress

@@ -3,8 +3,7 @@
 #include "pmm.h"
 
 #define MAX_TASKS 16
-extern volatile uint32_t system_ticks; // Doplň nahoru k includům
-// Globální pole procesů a počítadla
+extern volatile uint32_t system_ticks;
 task_t tasks[MAX_TASKS];
 int current_task = -1;
 int num_tasks = 0;
@@ -16,8 +15,7 @@ static inline void outb(uint16_t port, uint8_t val) {
 
 void task_exit() {
     asm volatile("cli");
-    // Zde by v budoucnu mělo být uvolnění paměti a odstranění z fronty
-    tasks[current_task].state = TASK_READY; // Pro tebe zatím jen stopne task
+    tasks[current_task].state = TASK_READY;
     for(;;); 
 }
 
@@ -31,23 +29,19 @@ void init_multitasking() {
 uint32_t schedule_handler(uint32_t esp) {
     outb(0x20, 0x20);
     system_ticks++;
-    // Pokud máme 0 nebo 1 proces, není mezi čím přepínat
     if (num_tasks <= 1) {
         return esp;
     }
-
-    // Pokud už nějaký proces běžel, uložíme mu jeho aktuální zásobník
     if (current_task >= 0) {
         tasks[current_task].esp = esp;
     }
-
-    // Vybereme další proces v pořadí (kruhové střídání)
     current_task++;
     if (current_task >= num_tasks) {
-        current_task = 0; // Jsme na konci, jedeme zase od nuly
+        current_task = 0;
     }
     return tasks[current_task].esp;
 }
+
 void create_task(void (*entry_point)()) {
     if (num_tasks >= MAX_TASKS) return;
     void* stack_mem = pmm_alloc_block(); 
