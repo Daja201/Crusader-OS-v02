@@ -16,6 +16,8 @@
 #include "vesa.h"
 #include "pmm.h"
 #include "app.h"
+#include "ac97.h"
+#include "speaker.h"
 extern fs_device_t g_drives[MAX_DRIVES];
 extern int g_current_drive;
 extern int g_active_drives;
@@ -424,6 +426,18 @@ void cmd_app(int argc, char** argv) {
     app(argv[1]);
 }
 
+void cmd_play97(int argc, char** argv) {
+    if (ac97_init() != 0) {
+        kklog("play97: AC97 init failed\n");
+        return;
+    }
+    if (ac97_play_test_tone() != 0) {
+        kklog("play97: play failed\n");
+        return;
+    }
+    kklog("play97: playing AC'97 tone\n");
+}
+
 command_t commands[] = {
     {"help", cmd_help},
     {"clear", cmd_clear},
@@ -443,6 +457,7 @@ command_t commands[] = {
     {"note", cmd_note},
     {"use", cmd_usedisk},
     {"mem", cmd_mem},
+    {"play97", cmd_play97},
     {"shutdown", cmd_shutdown},
     {"app", cmd_app},
 };
