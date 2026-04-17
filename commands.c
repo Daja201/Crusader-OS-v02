@@ -275,7 +275,7 @@ void cmd_shutdown(int argc, char** argv) {
     busy_ms(1000);
     asm volatile ("cli");
     vesa_draw_rec(0, 0, 1280, 1024, 0x000000);    
-    const char* verse = "When you lie down, you will not be afraid. Yes, you will lie down, and your sleep will be sweet. (PRO 3:24)";
+    const char* verse = "When you lie down, you will not be afraid. Yes, you will lie down, and your sleep will be sweet. (PROVERBS 3:24)";
     const char* msg = "IT IS NOW SAFE TO TURN OFF YOUR COMPUTER. GOOD NIGHT :)";
     int start_x_msg = (1280 - (strlen(msg) * 8)) / 2;
     int start_y_msg = 350;
@@ -287,6 +287,7 @@ void cmd_shutdown(int argc, char** argv) {
     for(int i = 0; msg[i] != '\0'; i++) {
         vesa_draw_char(msg[i], start_x_msg + (i * 8), start_y_msg, 0x2BC7FB, 0x000000); 
     }
+    vesa_swap();
     for (;;) {
         asm volatile ("hlt");
     }
@@ -427,14 +428,13 @@ void cmd_app(int argc, char** argv) {
 }
 
 void cmd_play97(int argc, char** argv) {
-    kklog("play97: Initializing AC'97...\n");
     if (ac97_init() == 0) {
-        kklog("play97: AC'97 device found, playing tone...\n");
         ac97_play_test_tone();
-    } else {
-        kklog("play97: AC'97 not found, using PC speaker fallback...\n");
-        speaker_play_tone(440, 500);
     }
+}
+
+void cmd_open(int argc, char** argv) {
+    kklogf("OPENING: %s", argv[1]);
 }
 
 command_t commands[] = {
@@ -459,6 +459,7 @@ command_t commands[] = {
     {"play97", cmd_play97},
     {"shutdown", cmd_shutdown},
     {"app", cmd_app},
+    {"open", cmd_open},
 };
 
 int command_count = sizeof(commands)/sizeof(command_t);
