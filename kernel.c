@@ -11,6 +11,7 @@
 #include "bioskbd.h"
 #include "idt.h"
 #include "task.h"
+#include "io.h"
 volatile uint32_t timer_ticks = 0;
 
 void timer_init(uint32_t frequency) {

@@ -11,11 +11,6 @@ int atoi(const char* s);
 long strtol(const char* nptr, char** endptr, int base);
 int strcasecmp(const char* a, const char* b);
 char* strncpy(char* dest, const char* src, size_t n);
-static inline uint8_t inb(uint16_t port) {
-    uint8_t ret;
-    asm volatile ( "inb %1, %0" : "=a"(ret) : "Nd"(port) );
-    return ret;
-}
 
 #define tolower(c) ((c) >= 'A' && (c) <= 'Z' ? (c) + 32 : (c))
 #endif

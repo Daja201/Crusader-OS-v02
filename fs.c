@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "string.h"
+#include "io.h"
 #define ATA_PRIMARY   0x1F0
 #define ATA_SECONDARY 0x170
 #define BLOCK_SIZE 512
