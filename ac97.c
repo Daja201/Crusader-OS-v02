@@ -17,19 +17,18 @@ static struct ac97_bdl_entry bdl[1] __attribute__((aligned(8)));
 static int16_t audio_buffer[32000]; 
 
 int ac97_init(void) {
-    kklog("ac97: init start\n");
     if (pci_find_class(0x04, 0x01, &g_dev, 0) != 0) {
-        kklog("ac97: no AC'97 device found\n");
+        kklog("NO AC97 DEVICE");
         return -1;
     }
-    kklogf("ac97: vendor=0x%x dev=0x%x BAR0=0x%x BAR1=0x%x\n",
-           g_dev.vendor_id, g_dev.device_id, g_dev.bar0, g_dev.bar1);
+    //kklogf("ac97: vendor=0x%x dev=0x%x BAR0=0x%x BAR1=0x%x\n",
+    //       g_dev.vendor_id, g_dev.device_id, g_dev.bar0, g_dev.bar1);
     return 0;
 }
 
 int ac97_play_test_tone(void) {
     if (g_dev.vendor_id == 0) {
-        kklog("ac97: No device!\n");
+        kklog("NO AC97 DEVICE");
         return -1;
     }
     uint32_t cmd = pci_config_read(g_dev.bus, g_dev.device, g_dev.function, 0x04);
@@ -38,16 +37,12 @@ int ac97_play_test_tone(void) {
     uint32_t real_bar1 = pci_config_read(g_dev.bus, g_dev.device, g_dev.function, 0x14);
     uint16_t nam_port = real_bar0 & ~0x3;  
     uint16_t nabm_port = real_bar1 & ~0x3; 
-
     if (nam_port == 0 || nabm_port == 0) {
-        kklog("ac97: PORTY JSOU STALE NULA!\n");
         return -1;
     }
-    kklog("ac97: Setting up mixer...\n");
     outw(nam_port + 0x00, 1);
     outw(nam_port + 0x02, 0x0000); 
     outw(nam_port + 0x18, 0x0000);
-    kklog("ac97: Generating wave...\n");
     int period = 54; 
     int16_t volume = 2000; 
     for (int i = 0; i < 32000; i += 2) {
@@ -57,7 +52,6 @@ int ac97_play_test_tone(void) {
             audio_buffer[i] = -volume; audio_buffer[i+1] = -volume;
         }
     }
-    kklog("ac97: Setting up DMA...\n");
     outb(nabm_port + 0x1B, 0x02);
     bdl[0].buffer_addr = (uint32_t)&audio_buffer;
     bdl[0].length = 16000;
@@ -70,6 +64,6 @@ int ac97_play_test_tone(void) {
     }
     outw(nabm_port + 0x16, 0x08);
     outb(nabm_port + 0x1B, 0x00);        
-    kklog("ac97: BEEEP!\n");
+    kklog("BEEP");
     return 0;
 }

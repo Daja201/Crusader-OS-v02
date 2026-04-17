@@ -26,7 +26,7 @@ void pci_config_write(uint8_t bus, uint8_t device, uint8_t function, uint8_t off
 int pci_find_class(uint8_t class_code, uint8_t subclass, pci_device_t* out, int index) {
     int found = 0;
     for (uint8_t bus = 0; bus < 16; bus++) {
-        kklogf("pci: scanning bus %d\n", bus);
+        //kklogf("pci: scanning bus %d\n", bus);
         for (uint8_t dev = 0; dev < 32; dev++) {
             for (uint8_t func = 0; func < 8; func++) {
                 uint32_t v = pci_config_read(bus, dev, func, 0x00);
@@ -35,7 +35,7 @@ int pci_find_class(uint8_t class_code, uint8_t subclass, pci_device_t* out, int 
                 uint32_t cls = pci_config_read(bus, dev, func, 0x08);
                 uint8_t cls_code = (cls >> 24) & 0xFF;
                 uint8_t sc = (cls >> 16) & 0xFF;
-                kklogf("pci: device found at %d:%d.%d vendor=0x%x class=0x%x/%x\n", bus, dev, func, vendor, cls_code, sc);
+                //kklogf("pci: device found at %d:%d.%d vendor=0x%x class=0x%x/%x\n", bus, dev, func, vendor, cls_code, sc);
                 if (cls_code == class_code && sc == subclass) {
                     if (found == index) {
                         out->bus = bus;
