@@ -427,15 +427,14 @@ void cmd_app(int argc, char** argv) {
 }
 
 void cmd_play97(int argc, char** argv) {
-    if (ac97_init() != 0) {
-        kklog("play97: AC97 init failed\n");
-        return;
+    kklog("play97: Initializing AC'97...\n");
+    if (ac97_init() == 0) {
+        kklog("play97: AC'97 device found, playing tone...\n");
+        ac97_play_test_tone();
+    } else {
+        kklog("play97: AC'97 not found, using PC speaker fallback...\n");
+        speaker_play_tone(440, 500);
     }
-    if (ac97_play_test_tone() != 0) {
-        kklog("play97: play failed\n");
-        return;
-    }
-    kklog("play97: playing AC'97 tone\n");
 }
 
 command_t commands[] = {

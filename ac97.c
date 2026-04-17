@@ -58,13 +58,18 @@ int ac97_play_test_tone(void) {
         }
     }
     kklog("ac97: Setting up DMA...\n");
+    outb(nabm_port + 0x1B, 0x02);
     bdl[0].buffer_addr = (uint32_t)&audio_buffer;
-    bdl[0].length = 32000;
+    bdl[0].length = 16000;
     bdl[0].flags = 0x8000;
-    outb(nabm_port + 0x1B, 0x00);              
-    outl(nabm_port + 0x10, (uint32_t)&bdl); 
+    outl(nabm_port + 0x10, (uint32_t)&bdl);            
     outb(nabm_port + 0x15, 0);                
-    outb(nabm_port + 0x1B, 0x01);              
+    outb(nabm_port + 0x1B, 0x01);      
+    while ((inw(nabm_port + 0x16) & 0x08) == 0) {
+        asm volatile("pause"); 
+    }
+    outw(nabm_port + 0x16, 0x08);
+    outb(nabm_port + 0x1B, 0x00);        
     kklog("ac97: BEEEP!\n");
     return 0;
 }
