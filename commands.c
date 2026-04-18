@@ -439,10 +439,6 @@ void cmd_play97(int argc, char** argv) {
     }
 }
 
-void cmd_open(int argc, char** argv) {
-    kklogf("OPENING: %s", argv[1]);
-}
-
 void cmd_mf(int argc, char** argv) {
     if (argc < 2) {
         kklog("Usage: mf <name>");
@@ -474,6 +470,34 @@ void cmd_cd(int argc, char** argv) {
     }
 }
 
+void cmd_open(int argc, char** argv) {
+    if (argc < 2) {
+        kklog("Usage: open <filename>\n");
+        return;
+    }
+
+    char* filename = argv[1];
+    char* ext = strrchr(filename, '.');
+
+    if (!ext) {
+        kklog("Error: No file extension found.\n");
+        return;
+    }
+
+    if (strcmp(ext, ".wav") == 0) {
+        play_wav_file(filename);
+    } 
+    else if (strcmp(ext, ".txt") == 0) {
+        cmd_read(argc, argv);
+    } 
+    else if (strcmp(ext, ".cos") == 0) {
+        kklog("Binary execution not yet implemented.\n");
+    } 
+    else {
+        kklog("Error: Unsupported file type.\n");
+    }
+}
+
 command_t commands[] = {
     {"help", cmd_help},
     {"clear", cmd_clear},
@@ -500,6 +524,7 @@ command_t commands[] = {
     {"open", cmd_open},
     {"mf", cmd_mf},
     {"cd", cmd_cd},
+    {"open", cmd_open},
 };
 
 int command_count = sizeof(commands)/sizeof(command_t);

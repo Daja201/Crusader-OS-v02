@@ -2,10 +2,19 @@
 #include "pci.h"
 #include "klog.h"
 #include "io.h"
+#include "formats.h"
+#include "fs.h"
+#include "ac97.h"
+#include "klog.h"
+#include <string.h>
 #include <stdint.h>
 extern uint32_t pci_config_read(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset);
 extern void pci_config_write(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint32_t value);
 static pci_device_t g_dev;
+extern uint32_t g_current_dir;
+extern void read_inode(int idx, inode_t* inode);
+extern int fs_resolve_path(const char* path, uint32_t current_dir_inode);
+static uint8_t wav_audio_buffer[65536] __attribute__((aligned(8))); 
 
 struct ac97_bdl_entry {
     uint32_t buffer_addr;
@@ -21,8 +30,37 @@ int ac97_init(void) {
         kklog("NO AC97 DEVICE");
         return -1;
     }
-    //kklogf("ac97: vendor=0x%x dev=0x%x BAR0=0x%x BAR1=0x%x\n",
-    //       g_dev.vendor_id, g_dev.device_id, g_dev.bar0, g_dev.bar1);
+    return 0;
+}
+
+int ac97_play_pcm(void* buffer, uint32_t length_bytes) {
+    if (g_dev.vendor_id == 0) {
+        kklog("NO AC97 DEVICE");
+        return -1;
+    }
+
+    uint32_t real_bar1 = pci_config_read(g_dev.bus, g_dev.device, g_dev.function, 0x14);
+    uint16_t nabm_port = real_bar1 & ~0x3; 
+    if (nabm_port == 0) return -1;
+
+    outb(nabm_port + 0x1B, 0x02);
+
+    bdl[0].buffer_addr = (uint32_t)buffer;
+    bdl[0].length = length_bytes / 2; 
+    bdl[0].flags = 0x8000;
+
+    outl(nabm_port + 0x10, (uint32_t)&bdl);            
+    outb(nabm_port + 0x15, 0);               
+    
+    outb(nabm_port + 0x1B, 0x01);      
+    
+    while ((inw(nabm_port + 0x16) & 0x08) == 0) {
+        asm volatile("pause"); 
+    }
+    
+    outw(nabm_port + 0x16, 0x08);
+    outb(nabm_port + 0x1B, 0x00);        
+    
     return 0;
 }
 
@@ -66,4 +104,33 @@ int ac97_play_test_tone(void) {
     outb(nabm_port + 0x1B, 0x00);        
     kklog("BEEP");
     return 0;
+}
+
+int play_wav_file(const char* filename) {
+    int inode_num = fs_resolve_path(filename, g_current_dir);
+    if (inode_num < 0) {
+        kklogf_green("WAV file '%s' not found!\n", filename);
+        return -1;
+    }
+    inode_t file_node;
+    read_inode(inode_num, &file_node);
+    if (file_node.size < sizeof(wav_header_t)) {
+        kklog("FILE TOO SMALL TO BE WAV\n");
+        return -1;
+    }
+    wav_header_t header;
+    fs_read((uint32_t)inode_num, &file_node, 0, sizeof(wav_header_t), (uint8_t*)&header);
+    if (header.chunkId[0] != 'R' || header.chunkId[1] != 'I' ||
+        header.format[0] != 'W' || header.format[1] != 'A') {
+        kklog("INVALID WAV FORMAT\n");
+        return -1;
+    }
+    uint32_t data_size = header.subchunk2Size;
+    if (data_size > sizeof(wav_audio_buffer)) {
+        data_size = sizeof(wav_audio_buffer);
+    }
+    fs_read((uint32_t)inode_num, &file_node, sizeof(wav_header_t), data_size, wav_audio_buffer);
+    kklogf_green("Playing %s: %d Hz, %d ch, %d bit\n", 
+                 filename, header.sampleRate, header.numChannels, header.bitsPerSample);
+    return ac97_play_pcm(wav_audio_buffer, data_size);
 }
