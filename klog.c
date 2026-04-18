@@ -356,6 +356,30 @@ void klog_yellow(const char* msg) {
     cursor('d');
 }
 
+void klog_orange(const char* msg) {
+    while (*msg != '\0') {
+        char c = *msg;
+        cursor('e');
+        if (c == '\n') {
+            c_x = 0;
+            c_y += 8;
+        } else {
+            vesa_draw_char_34(c, c_x, c_y, 0xFFA500, 0x000000);
+            c_x += 8;
+            if (c_x > 952) {
+                c_x = 0;
+                c_y += 8;
+            }
+        }
+        if (c_y >= 720) {
+            c_y = 0;
+            vesa_clear(0x000000);
+        }
+        msg++;
+    }
+    cursor('d');
+}
+
 void kklog_red(const char* msg) {
     while (*msg != '\0') {
         char c = *msg;
@@ -673,7 +697,7 @@ void save_notes_to_disk() {
         inode_idx = fs_create_file("notes.cos", "system");
     }
     if (inode_idx >= 0) {
-        fs_write((uint32_t)inode_idx, (uint8_t*)note_list, sizeof(note_list));
+        fs_write((uint32_t)inode_idx,0, (uint8_t*)note_list, sizeof(note_list));
         klog_status("Notes saved to disk", 'g');
     }
 }

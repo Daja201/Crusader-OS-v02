@@ -44,7 +44,7 @@ typedef struct {
     uint32_t inode_bitmap_sectors;
     uint32_t inode_table_blocks;
 } fs_device_t;
-
+extern uint32_t g_current_dir;
 extern fs_device_t g_drives[MAX_DRIVES];
 extern int g_active_drives;
 void init_fs(void);
@@ -65,7 +65,7 @@ int dir_add(uint32_t dir_inode_id, inode_t* dir, const char* name, uint32_t inod
 int dir_remove(inode_t* dir, const char* name);
 int dir_lookup(inode_t* dir, const char* name);
 uint32_t fs_create_file(const char* name, const char* main_tag);
-int fs_write(uint32_t inode, const uint8_t* data, size_t len);
+int fs_write(uint32_t inode_idx, uint32_t offset, const uint8_t* data, size_t len);
 uint32_t fs_read(uint32_t inode_idx, inode_t* node, uint32_t offset, uint32_t size, uint8_t* buffer);
 int fs_delete_file(const char* path);
 void format_fs(void);

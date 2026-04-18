@@ -5,6 +5,7 @@
 
 char cmd_buf[CMD_BUF_SIZE];
 int cmd_len = 0;
+char g_current_path[64] = "";
 
 void execute_command(char* line) {
     char* argv[8];
@@ -36,7 +37,16 @@ void terminal_key(char c) {
         klog("\n");
         execute_command(cmd_buf);
         cmd_len = 0;
-        klog_yellow("CRUSADER>>> ");
+        if (c == '\n') {
+        cmd_buf[cmd_len] = 0;
+        klog("\n");
+        execute_command(cmd_buf);
+        cmd_len = 0;
+        klog_yellow("CRUSADER");
+        klog_orange(g_current_path);
+        klog_yellow(">> ");
+        return;
+    }
         return;
     }
     if (c == '\b') {
