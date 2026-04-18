@@ -8,6 +8,24 @@ int strcmp(const char* a, const char* b) {
     return (unsigned char)*a - (unsigned char)*b;
 }
 
+char* strrchr(const char* s, int c) {
+    char* last = NULL;
+    if (s == NULL) return NULL;
+    
+    while (*s != '\0') {
+        if (*s == (char)c) {
+            last = (char*)s;
+        }
+        s++;
+    }
+    
+    if ((char)c == '\0') {
+        return (char*)s;
+    }
+    
+    return last;
+}
+
 char *strcpy(char *dest, const char *src) {
     char *save = dest;
     while (*src) {
