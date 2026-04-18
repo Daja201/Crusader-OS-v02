@@ -341,7 +341,7 @@ void cmd_note(int argc, char** argv) {
 }
 
 void cmd_format(int argc, char** argv) {
-    create_task(format_fs);
+    format_fs();
 }
 
 void cmd_qformat(int argc, char** argv) {
@@ -475,15 +475,12 @@ void cmd_open(int argc, char** argv) {
         kklog("Usage: open <filename>\n");
         return;
     }
-
     char* filename = argv[1];
     char* ext = strrchr(filename, '.');
-
     if (!ext) {
         kklog("Error: No file extension found.\n");
         return;
     }
-
     if (strcmp(ext, ".wav") == 0) {
         play_wav_file(filename);
     } 
@@ -491,7 +488,7 @@ void cmd_open(int argc, char** argv) {
         cmd_read(argc, argv);
     } 
     else if (strcmp(ext, ".cos") == 0) {
-        kklog("Binary execution not yet implemented.\n");
+        //IMPLEMENT BINARY
     } 
     else {
         kklog("Error: Unsupported file type.\n");

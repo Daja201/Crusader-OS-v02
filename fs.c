@@ -4,6 +4,7 @@
 #include <string.h>
 #include "string.h"
 #include "io.h"
+#include "terminal.h"
 
 #define ATA_PRIMARY 0x1F0
 #define ATA_SECONDARY 0x170
@@ -39,6 +40,7 @@ static uint32_t block_bitmap_bytes = 0;
 static uint8_t block_bitmap_static[BLOCK_BITMAP_MAX_SIZE];
 uint8_t *block_bitmap = block_bitmap_static;
 int g_current_drive = 0;
+extern char g_current_path[];
 
 struct dirent {
     uint32_t inode;
@@ -221,21 +223,19 @@ void format_fs() {
     g_superblock.inode_start = g_superblock.bitmap_start + block_bitmap_sectors + inode_bitmap_sectors;
     inode_table_blocks = (uint32_t)((g_superblock.inode_count * INODE_SIZE + SECTOR_SIZE - 1) / SECTOR_SIZE);
     g_superblock.data_start = g_superblock.inode_start + inode_table_blocks;
-    
     uint8_t sb_buf[SECTOR_SIZE];
     memset(sb_buf, 0, SECTOR_SIZE);
     memcpy(sb_buf, &g_superblock, sizeof(superblock_t));
     block_write(SUPERBLOCK_LBA, sb_buf);
-    
     memset(block_bitmap, 0, BLOCK_BITMAP_MAX_SIZE);
     memset(inode_bitmap, 0, INODE_BITMAP_SIZE);
-    
     for (uint32_t i = 0; i < g_superblock.data_start; i++) {
         set_block_bitmap_bit(i);
     }
     save_block_bitmap();
     save_inode_bitmap();
     create_root();
+    create_defdirs();
     klog_status("FORMATTED");
     init_fs();
 }
@@ -244,7 +244,6 @@ void qformat_fs(void) {
     uint8_t zero_sector[SECTOR_SIZE];
     memset(zero_sector, 0, SECTOR_SIZE);
     klog_status("QUICK FORMATTING STARTED");
-
     g_superblock.magic = 0x5A4C534A;
     g_superblock.block_size = SECTOR_SIZE;
     g_superblock.total_blocks = g_drives[g_current_drive].total_sectors;
@@ -258,7 +257,6 @@ void qformat_fs(void) {
     g_superblock.inode_start = g_superblock.bitmap_start + block_bitmap_sectors + inode_bitmap_sectors;
     inode_table_blocks = (uint32_t)((g_superblock.inode_count * INODE_SIZE + SECTOR_SIZE - 1) / SECTOR_SIZE);
     g_superblock.data_start = g_superblock.inode_start + inode_table_blocks;
-
     for (uint32_t i = 0; i < block_bitmap_sectors; i++) {
         block_write(g_superblock.bitmap_start + i, zero_sector);
     }
@@ -271,20 +269,18 @@ void qformat_fs(void) {
     for (uint32_t i = 0; i < num_inode_blocks; i++) {
         block_write(g_superblock.inode_start + i, zero_sector);
     }
-    
     uint8_t sb_buf[SECTOR_SIZE];
     memset(sb_buf, 0, SECTOR_SIZE);
     memcpy(sb_buf, &g_superblock, sizeof(superblock_t));
     block_write(SUPERBLOCK_LBA, sb_buf);
-    
     memset(block_bitmap, 0, BLOCK_BITMAP_MAX_SIZE);
     memset(inode_bitmap, 0, INODE_BITMAP_SIZE);
-    
     for (uint32_t i = 0; i < g_superblock.data_start; i++) {
         set_block_bitmap_bit(i);
     }
     save_block_bitmap();
     create_root();
+    create_defdirs();
     init_fs();
     klog_status("FORMATTED");
 }
@@ -310,6 +306,15 @@ void drives() {
     }
 }
 
+create_defdirs() {
+    fs_create_dir("user", g_current_dir);
+    fs_create_dir("data", g_current_dir);
+    fs_create_dir("mount", g_current_dir);
+    fs_create_dir("lock", g_current_dir);
+    fs_create_dir("cosfiles", g_current_dir);
+    strcpy(g_current_path, ">");
+    strcat(g_current_path, "user");
+}
 void init_fs() {
     if (g_active_drives > 4) g_active_drives = 0;
     if (g_active_drives == 0) return;
@@ -633,7 +638,6 @@ int fs_delete_file(const char* name) {
     }
     free_inode(inode_num);
     dir_remove(&root, name);
-
     return 0;
 }
 
