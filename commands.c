@@ -26,6 +26,7 @@ extern void select_drive(uint16_t base, uint8_t slave);
 extern void block_read(uint32_t lba, uint8_t* buf);
 extern int fs_change_drive(int drive_id);
 extern void init_fs(void);
+extern char g_current_path[];
 
 void cmd_help(int argc, char** argv) {
     kklog_red("Welcome to Crusader OS made by David Zapletal");
@@ -182,8 +183,7 @@ void cmd_read(int argc, char** argv) {
         return;
     }
     inode_t root;
-    read_inode(0, &root);
-
+    read_inode(g_current_dir, &root);
     int inode_num = dir_lookup(&root, argv[1]);
     if (inode_num < 0) {
         kklog("Error: File not found");
@@ -210,25 +210,29 @@ void cmd_read(int argc, char** argv) {
 }
 
 void cmd_ls(int argc, char** argv) {
-    inode_t root;
-    read_inode(0, &root); 
-    uint8_t buf[32678];
+    inode_t dir;
+    read_inode(g_current_dir, &dir); 
+    uint8_t buf[512];
     struct dirent {
         uint32_t inode;
         char name[28];
     };
     int entry_count = 512 / sizeof(struct dirent);
-    kklog("Files in root directory:");
     for (int b = 0; b < 12; b++) {
-        uint32_t block_lba = root.direct[b];
-        if (block_lba == 0) break; 
+        uint32_t block_lba = dir.direct[b];
+        if (block_lba == 0) continue;
         block_read(block_lba, buf);
         struct dirent* entries = (struct dirent*)buf;
         for (int i = 0; i < entry_count; i++) {
             if (entries[i].inode != 0) {
                 inode_t file_node;
+                read_inode(entries[i].inode, &file_node);
                 klog("  ");
-                klog(entries[i].name);
+                if (file_node.type == 2) {
+                    klog_red(entries[i].name);
+                } else {
+                    klog_green(entries[i].name);
+                }
             }
         }
         klog("\n");
@@ -260,7 +264,9 @@ void cmd_wr(int argc, char** argv) {
         kklog("file creation failed");
         return;
     }
-    int written = fs_write(inode, (const uint8_t*)data, strlen(data));
+    inode_t node;
+    read_inode(inode, &node);
+    int written = fs_write(inode, node.size,(const uint8_t*)data, strlen(data));
     if (written < 0) {
         kklog("write failed");
     } else {
@@ -437,6 +443,37 @@ void cmd_open(int argc, char** argv) {
     kklogf("OPENING: %s", argv[1]);
 }
 
+void cmd_mf(int argc, char** argv) {
+    if (argc < 2) {
+        kklog("Usage: mf <name>");
+        return;
+    }
+    if (fs_create_dir(argv[1], g_current_dir) == -1) {
+        kklog("Failed to create directory.");
+    }
+}
+
+void cmd_cd(int argc, char** argv) {
+    if (argc < 2) {
+        kklogf("Current directory inode: %d", g_current_dir);
+        return;
+    }
+
+    int result = fs_cd(argv[1]);
+    if (result == 0) {
+        if (strcmp(argv[1], "..") == 0) {
+            strcpy(g_current_path, ">");
+        } else {
+            strcpy(g_current_path, ">");
+            strcat(g_current_path, argv[1]); 
+        }
+    } else if (result == -2) {
+        kklog("Error: Not a directory.");
+    } else {
+        kklog("Error: Directory not found.");
+    }
+}
+
 command_t commands[] = {
     {"help", cmd_help},
     {"clear", cmd_clear},
@@ -460,6 +497,9 @@ command_t commands[] = {
     {"shutdown", cmd_shutdown},
     {"app", cmd_app},
     {"open", cmd_open},
+    {"open", cmd_open},
+    {"mf", cmd_mf},
+    {"cd", cmd_cd},
 };
 
 int command_count = sizeof(commands)/sizeof(command_t);

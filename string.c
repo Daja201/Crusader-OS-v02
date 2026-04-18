@@ -8,6 +8,15 @@ int strcmp(const char* a, const char* b) {
     return (unsigned char)*a - (unsigned char)*b;
 }
 
+char *strcpy(char *dest, const char *src) {
+    char *save = dest;
+    while (*src) {
+        *dest++ = *src++;
+    }
+    *dest = '\0';
+    return save;
+}
+
 size_t strlen(const char* str) {
     size_t len = 0;
     while (str[len]) len++;
@@ -64,6 +73,16 @@ char* itoa(int value, char* buffer, int base) {
         *ptr1++ = tmp_char;
     }
     return buffer;
+}
+
+char *strcat(char *dest, const char *src) {
+    char *ptr = dest;
+    while (*ptr) ptr++;
+    while (*src) {
+        *ptr++ = *src++;
+    }
+    *ptr = '\0';
+    return dest;
 }
 
 int str_to_int(const char *str) {

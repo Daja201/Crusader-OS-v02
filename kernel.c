@@ -65,7 +65,7 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
     verse();
     appname("TERMINAL");
     klog("\n");
-    klog_yellow("CRUSADER>>> ");
+    klog_yellow("CRUSADER>> ");
     klog_status("BOOTED");
     timer_init(100); 
     init_multitasking();

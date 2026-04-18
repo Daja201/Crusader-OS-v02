@@ -4,29 +4,28 @@
 #include <string.h>
 #include "string.h"
 #include "io.h"
-#define ATA_PRIMARY   0x1F0
+
+#define ATA_PRIMARY 0x1F0
 #define ATA_SECONDARY 0x170
 #define BLOCK_SIZE 512
-#define ATA_REG_DATA     0
+#define ATA_REG_DATA 0
 #define ATA_REG_SECCOUNT 2
-#define ATA_REG_LBA0     3
-#define ATA_REG_LBA1     4
-#define ATA_REG_LBA2     5
-#define ATA_REG_DRIVE    6
-#define ATA_REG_STATUS   7
-#define ATA_REG_CMD      7
-#define ATA_CMD_READ  0x20
+#define ATA_REG_LBA0 3
+#define ATA_REG_LBA1 4
+#define ATA_REG_LBA2 5
+#define ATA_REG_DRIVE 6
+#define ATA_REG_STATUS 7
+#define ATA_REG_CMD 7
+#define ATA_CMD_READ 0x20
 #define ATA_CMD_WRITE 0x30
 #define SECTOR_SIZE 512
-#define INODE_TABLE_START 3
 #define INODE_SIZE 128
 #define INODES_PER_BLOCK (512 / INODE_SIZE)
 #define SUPERBLOCK_LBA 0
-#define BLOCK_BITMAP_LBA 1
-#define INODE_BITMAP_LBA 2
-#define INODE_TABLE_LBA 3
 #define ROOT_INODE 0
 #define PTRS_PER_BLOCK (SECTOR_SIZE / sizeof(uint32_t))
+
+uint32_t g_current_dir = 0;
 uint8_t inode_bitmap[INODE_BITMAP_SIZE];
 static uint16_t current_ata_base = ATA_PRIMARY;
 static uint8_t current_is_slave = 0;
@@ -41,39 +40,27 @@ static uint8_t block_bitmap_static[BLOCK_BITMAP_MAX_SIZE];
 uint8_t *block_bitmap = block_bitmap_static;
 int g_current_drive = 0;
 
+struct dirent {
+    uint32_t inode;
+    char name[28];
+};
+
 static int get_block_bitmap_bit(uint32_t idx) {
     if (idx >= g_superblock.total_blocks) return 1;
-    uint32_t bits_per_sector = SECTOR_SIZE * 8;
-    uint32_t sector_idx = idx / bits_per_sector;
-    uint32_t within = idx % bits_per_sector; 
-    uint32_t byte_off = within / 8;
-    uint8_t buf[SECTOR_SIZE];
-    block_read(g_superblock.bitmap_start + sector_idx, buf);
-    return (buf[byte_off] >> (within % 8)) & 1;
+    uint32_t byte_off = idx / 8;
+    return (block_bitmap[byte_off] >> (idx % 8)) & 1;
 }
 
 static void set_block_bitmap_bit(uint32_t idx) {
     if (idx >= g_superblock.total_blocks) return;
-    uint32_t bits_per_sector = SECTOR_SIZE * 8;
-    uint32_t sector_idx = idx / bits_per_sector;
-    uint32_t within = idx % bits_per_sector;
-    uint32_t byte_off = within / 8;
-    uint8_t buf[SECTOR_SIZE];
-    block_read(g_superblock.bitmap_start + sector_idx, buf);
-    buf[byte_off] |= (1 << (within % 8));
-    block_write(g_superblock.bitmap_start + sector_idx, buf);
+    uint32_t byte_off = idx / 8;
+    block_bitmap[byte_off] |= (1 << (idx % 8));
 }
 
 static void clear_block_bitmap_bit(uint32_t idx) {
     if (idx >= g_superblock.total_blocks) return;
-    uint32_t bits_per_sector = SECTOR_SIZE * 8;
-    uint32_t sector_idx = idx / bits_per_sector;
-    uint32_t within = idx % bits_per_sector;
-    uint32_t byte_off = within / 8;
-    uint8_t buf[SECTOR_SIZE];
-    block_read(g_superblock.bitmap_start + sector_idx, buf);
-    buf[byte_off] &= ~(1 << (within % 8));
-    block_write(g_superblock.bitmap_start + sector_idx, buf);
+    uint32_t byte_off = idx / 8;
+    block_bitmap[byte_off] &= ~(1 << (idx % 8));
 }
 
 int ata_wait_busy(uint16_t base) {
@@ -89,10 +76,9 @@ int ata_wait_drq(uint16_t base) {
 }
 
 void block_read(uint32_t lba, uint8_t* buf) {
-    uint8_t drive_bit = current_is_slave ? 0xF0 : 0xE0;
     uint8_t drive_sel = (current_is_slave ? 0xF0 : 0xE0) | ((lba >> 24) & 0x0F);
     outb(current_ata_base + ATA_REG_DRIVE, drive_sel);
-    for(int i=0; i<4; i++) inb(current_ata_base + ATA_REG_STATUS);
+    for(int i = 0; i < 4; i++) inb(current_ata_base + ATA_REG_STATUS);
     ata_wait_busy(current_ata_base);
     outb(current_ata_base + ATA_REG_SECCOUNT, 1);
     outb(current_ata_base + ATA_REG_LBA0, lba & 0xFF);
@@ -106,7 +92,7 @@ void block_read(uint32_t lba, uint8_t* buf) {
 void block_write(uint32_t lba, const uint8_t* buf) {
     uint8_t drive_sel = (current_is_slave ? 0xF0 : 0xE0) | ((lba >> 24) & 0x0F);
     outb(current_ata_base + ATA_REG_DRIVE, drive_sel);
-    for(int i=0; i<4; i++) inb(current_ata_base + ATA_REG_STATUS);
+    for(int i = 0; i < 4; i++) inb(current_ata_base + ATA_REG_STATUS);
     ata_wait_busy(current_ata_base);
     outb(current_ata_base + ATA_REG_SECCOUNT, 1);
     outb(current_ata_base + ATA_REG_LBA0, lba & 0xFF);
@@ -117,14 +103,16 @@ void block_write(uint32_t lba, const uint8_t* buf) {
     outsw(current_ata_base + ATA_REG_DATA, buf, SECTOR_SIZE / 2);
 }
 
-
 int alloc_block() {
     uint32_t start_idx = 1;
     const uint32_t FS_MAGIC = 0x5A4C534A;
-    if (g_superblock.magic == FS_MAGIC && g_superblock.data_start > 1) start_idx = g_superblock.data_start;
+    if (g_superblock.magic == FS_MAGIC && g_superblock.data_start > 1) {
+        start_idx = g_superblock.data_start;
+    }
     for (uint32_t i = start_idx; i < g_superblock.total_blocks; i++) {
         if (!get_block_bitmap_bit(i)) {
             set_block_bitmap_bit(i);
+            save_block_bitmap(); 
             return (int)i;
         }
     }
@@ -133,6 +121,7 @@ int alloc_block() {
 
 void free_block(uint32_t idx) {
     clear_block_bitmap_bit(idx);
+    save_block_bitmap(); 
 }
 
 void create_root() {
@@ -141,10 +130,7 @@ void create_root() {
     inode_t root = {0};
     root.type = 2;
     int b = alloc_block();
-    if (b == 0) {
-        kklog("create_root: alloc_block failed");
-        return;
-    }
+    if (b == 0) return;
     root.direct[0] = (uint32_t)b;
     write_inode(0, &root);
 }
@@ -166,7 +152,6 @@ void write_inode(int idx, inode_t* inode) {
     block_write(block, buf);
 }
 
-
 void load_block_bitmap() {
     uint32_t bytes_left = block_bitmap_bytes;
     uint8_t tmp[SECTOR_SIZE];
@@ -186,7 +171,7 @@ void save_block_bitmap() {
     uint8_t *src = block_bitmap;
     for (uint32_t i = 0; i < block_bitmap_sectors; ++i) {
         uint32_t tocopy = bytes_left > SECTOR_SIZE ? SECTOR_SIZE : bytes_left;
-        for (uint32_t j = 0; j < SECTOR_SIZE; ++j) tmp[j] = 0;
+        memset(tmp, 0, SECTOR_SIZE);
         if (tocopy > 0) memcpy(tmp, src, tocopy);
         block_write(g_superblock.bitmap_start + i, tmp);
         src += tocopy;
@@ -198,9 +183,7 @@ void select_drive(uint16_t base, uint8_t slave) {
     current_ata_base = base;
     current_is_slave = slave;
     outb(base + ATA_REG_DRIVE, 0xA0 | (slave << 4));
-    for(int i = 0; i < 4; i++) {
-        inb(base + ATA_REG_STATUS);
-    }
+    for(int i = 0; i < 4; i++) inb(base + ATA_REG_STATUS);
     while (inb(base + ATA_REG_STATUS) & 0x80); 
 }
 
@@ -231,26 +214,27 @@ void format_fs() {
     g_superblock.inode_count = g_superblock.total_blocks / 4;
     g_superblock.inode_count = (g_superblock.inode_count + 7) & ~7; 
     if (g_superblock.inode_count == 0) g_superblock.inode_count = 8;
-    g_superblock.bitmap_start = BLOCK_BITMAP_LBA;
+    g_superblock.bitmap_start = 1;
     block_bitmap_bytes = (uint32_t)((g_superblock.total_blocks + 7) / 8);
     block_bitmap_sectors = (block_bitmap_bytes + SECTOR_SIZE - 1) / SECTOR_SIZE;
     inode_bitmap_sectors = ((g_superblock.inode_count + 7) / 8 + SECTOR_SIZE - 1) / SECTOR_SIZE;
     g_superblock.inode_start = g_superblock.bitmap_start + block_bitmap_sectors + inode_bitmap_sectors;
     inode_table_blocks = (uint32_t)((g_superblock.inode_count * INODE_SIZE + SECTOR_SIZE - 1) / SECTOR_SIZE);
     g_superblock.data_start = g_superblock.inode_start + inode_table_blocks;
-    {
-        uint8_t sb_buf[SECTOR_SIZE];
-        for (int i = 0; i < SECTOR_SIZE; i++) sb_buf[i] = 0;
-        memcpy(sb_buf, &g_superblock, sizeof(superblock_t));
-        block_write(SUPERBLOCK_LBA, sb_buf);
-    }
-    for (int i = 0; i < BLOCK_BITMAP_MAX_SIZE; i++) block_bitmap[i] = 0;
-    for (int i = 0; i < INODE_BITMAP_SIZE; i++) inode_bitmap[i] = 0;
-    save_block_bitmap();
-    save_inode_bitmap();
+    
+    uint8_t sb_buf[SECTOR_SIZE];
+    memset(sb_buf, 0, SECTOR_SIZE);
+    memcpy(sb_buf, &g_superblock, sizeof(superblock_t));
+    block_write(SUPERBLOCK_LBA, sb_buf);
+    
+    memset(block_bitmap, 0, BLOCK_BITMAP_MAX_SIZE);
+    memset(inode_bitmap, 0, INODE_BITMAP_SIZE);
+    
     for (uint32_t i = 0; i < g_superblock.data_start; i++) {
         set_block_bitmap_bit(i);
     }
+    save_block_bitmap();
+    save_inode_bitmap();
     create_root();
     klog_status("FORMATTED");
     init_fs();
@@ -260,34 +244,46 @@ void qformat_fs(void) {
     uint8_t zero_sector[SECTOR_SIZE];
     memset(zero_sector, 0, SECTOR_SIZE);
     klog_status("QUICK FORMATTING STARTED");
-    block_write(BLOCK_BITMAP_LBA, zero_sector);
-    block_write(INODE_BITMAP_LBA, zero_sector);
-    uint32_t num_inode_blocks = 64; 
-    for (uint32_t i = 0; i < num_inode_blocks; i++) {
-        block_write(INODE_TABLE_LBA + i, zero_sector);
-    }
+
     g_superblock.magic = 0x5A4C534A;
     g_superblock.block_size = SECTOR_SIZE;
     g_superblock.total_blocks = g_drives[g_current_drive].total_sectors;
     g_superblock.inode_count = g_superblock.total_blocks / 4;
     g_superblock.inode_count = (g_superblock.inode_count + 7) & ~7; 
     if (g_superblock.inode_count == 0) g_superblock.inode_count = 8;
-    g_superblock.bitmap_start = BLOCK_BITMAP_LBA;
+    g_superblock.bitmap_start = 1;
     block_bitmap_bytes = (uint32_t)((g_superblock.total_blocks + 7) / 8);
     block_bitmap_sectors = (block_bitmap_bytes + SECTOR_SIZE - 1) / SECTOR_SIZE;
     inode_bitmap_sectors = ((g_superblock.inode_count + 7) / 8 + SECTOR_SIZE - 1) / SECTOR_SIZE;
     g_superblock.inode_start = g_superblock.bitmap_start + block_bitmap_sectors + inode_bitmap_sectors;
     inode_table_blocks = (uint32_t)((g_superblock.inode_count * INODE_SIZE + SECTOR_SIZE - 1) / SECTOR_SIZE);
     g_superblock.data_start = g_superblock.inode_start + inode_table_blocks;
+
+    for (uint32_t i = 0; i < block_bitmap_sectors; i++) {
+        block_write(g_superblock.bitmap_start + i, zero_sector);
+    }
+    uint32_t inb_start = g_superblock.bitmap_start + block_bitmap_sectors;
+    for (uint32_t i = 0; i < inode_bitmap_sectors; i++) {
+        block_write(inb_start + i, zero_sector);
+    }
+    uint32_t num_inode_blocks = 64; 
+    if (num_inode_blocks > inode_table_blocks) num_inode_blocks = inode_table_blocks;
+    for (uint32_t i = 0; i < num_inode_blocks; i++) {
+        block_write(g_superblock.inode_start + i, zero_sector);
+    }
+    
     uint8_t sb_buf[SECTOR_SIZE];
     memset(sb_buf, 0, SECTOR_SIZE);
     memcpy(sb_buf, &g_superblock, sizeof(superblock_t));
     block_write(SUPERBLOCK_LBA, sb_buf);
-    for (int i = 0; i < BLOCK_BITMAP_MAX_SIZE; i++) block_bitmap[i] = 0;
-    for (int i = 0; i < INODE_BITMAP_SIZE; i++) inode_bitmap[i] = 0;
+    
+    memset(block_bitmap, 0, BLOCK_BITMAP_MAX_SIZE);
+    memset(inode_bitmap, 0, INODE_BITMAP_SIZE);
+    
     for (uint32_t i = 0; i < g_superblock.data_start; i++) {
         set_block_bitmap_bit(i);
     }
+    save_block_bitmap();
     create_root();
     init_fs();
     klog_status("FORMATTED");
@@ -316,32 +312,28 @@ void drives() {
 
 void init_fs() {
     if (g_active_drives > 4) g_active_drives = 0;
-    if (g_active_drives == 0) {
-        kklog("No active drives found");
-        return;
-    }
+    if (g_active_drives == 0) return;
+    
     select_drive(g_drives[g_current_drive].ata_base, g_drives[g_current_drive].is_slave);
-    {
-        uint8_t sb_buf[SECTOR_SIZE];
-        block_read(SUPERBLOCK_LBA, sb_buf);
-        memcpy(&g_superblock, sb_buf, sizeof(superblock_t));
-    }
+    
+    uint8_t sb_buf[SECTOR_SIZE];
+    block_read(SUPERBLOCK_LBA, sb_buf);
+    memcpy(&g_superblock, sb_buf, sizeof(superblock_t));
+    
     const uint32_t FS_MAGIC = 0x5A4C534A;
-    if (g_superblock.magic != FS_MAGIC) {
-        klog_status("No valid filesystem superblock", 'r');
-        return;
-    }
-    //IT HURTS
+    if (g_superblock.magic != FS_MAGIC) return;
+    
     block_bitmap_bytes = (uint32_t)((g_superblock.total_blocks + 7) / 8);
     block_bitmap_sectors = (block_bitmap_bytes + SECTOR_SIZE - 1) / SECTOR_SIZE;
     inode_bitmap_sectors = ((g_superblock.inode_count + 7) / 8 + SECTOR_SIZE - 1) / SECTOR_SIZE;
     inode_table_blocks = (uint32_t)((g_superblock.inode_count * INODE_SIZE + SECTOR_SIZE - 1) / SECTOR_SIZE);
+    
     load_block_bitmap();
     load_inode_bitmap();
+    
     inode_t root;
     read_inode(ROOT_INODE, &root);
     if (root.type != 2) {
-        kklog("Creating root directory");
         create_root();
     }
 }
@@ -376,11 +368,6 @@ void free_inode(int idx) {
     inode_bitmap[idx / 8] &= ~(1 << (idx % 8));
     save_inode_bitmap();
 }
-
-struct dirent {
-    uint32_t inode;
-    char name[28];
-};
 
 int dir_lookup(inode_t* dir, const char* name) {
     if (dir->type != 2) return -1;    
@@ -425,7 +412,6 @@ int dir_add(uint32_t dir_inode_id, inode_t* dir, const char* name, uint32_t inod
             }
         }    
     }
-    kklog("ERROR: FULL, MAKE AN INDIRECT BLOCK SUPPORT");
     return -1;
 }
 
@@ -441,16 +427,18 @@ int fs_change_drive(int drive_id) {
 int dir_remove(inode_t* dir, const char* name) {
     if (dir->type != 2) return -1;
     uint8_t buf[SECTOR_SIZE];
-    block_read((uint32_t)dir->direct[0], buf);
-    struct dirent* entries = (struct dirent*)buf;
     int entry_count = SECTOR_SIZE / sizeof(struct dirent);
-    for (int i = 0; i < entry_count; i++) {
-        if (entries[i].inode == 0) continue;
-        if (strcmp(entries[i].name, name) == 0) {
-            entries[i].inode = 0;
-            for (int j = 0; j < (int)sizeof(entries[i].name); ++j) entries[i].name[j] = '\0';
-            block_write((uint32_t)dir->direct[0], buf);
-            return 0;
+    for (int b = 0; b < 12; b++) {
+        if (dir->direct[b] == 0) continue;
+        block_read((uint32_t)dir->direct[b], buf);
+        struct dirent* entries = (struct dirent*)buf;
+        for (int i = 0; i < entry_count; i++) {
+            if (entries[i].inode != 0 && strcmp(entries[i].name, name) == 0) {
+                entries[i].inode = 0;
+                memset(entries[i].name, 0, sizeof(entries[i].name));
+                block_write((uint32_t)dir->direct[b], buf);
+                return 0;
+            }
         }
     }
     return -1;
@@ -472,79 +460,6 @@ int fs_find_by_tag(const char* tag, uint32_t* results, int max_results) {
         }
     }
     return found_count;
-}
-
-int fs_write(uint32_t inode_idx, const uint8_t* data, size_t len) {
-    inode_t node;
-    read_inode(inode_idx, &node);
-    size_t written = 0;
-    uint8_t buf[SECTOR_SIZE];
-    while (written < len) {
-        uint32_t block_index = written / SECTOR_SIZE;
-        uint32_t offset_in_block = written % SECTOR_SIZE;
-        uint32_t phys_block = get_physical_block(inode_idx, &node, block_index, 1);
-        if (phys_block == 0) return -1; // volume full
-        if (offset_in_block > 0 || (len - written) < SECTOR_SIZE) {
-            block_read(phys_block, buf);
-        }
-        size_t chunk_size = SECTOR_SIZE - offset_in_block;
-        if (chunk_size > (len - written)) chunk_size = len - written;
-        memcpy(buf + offset_in_block, data + written, chunk_size);
-        block_write(phys_block, buf);
-        written += chunk_size;
-    }
-    if (written > node.size) {
-        node.size = (uint32_t)written;
-        write_inode(inode_idx, &node);
-    }
-    return (int)written;
-}
-
-void free_indirect_tree(uint32_t block_lba, int depth) {
-    if (block_lba == 0) return;
-    if (depth > 0) {
-        uint32_t ptrs[PTRS_PER_BLOCK];
-        block_read(block_lba, (uint8_t*)ptrs);
-        for (int i = 0; i < PTRS_PER_BLOCK; i++) {
-            if (ptrs[i] != 0) {
-                free_indirect_tree(ptrs[i], depth - 1);
-            }
-        }
-    }
-    free_block(block_lba);
-}
-
-int fs_delete_file(const char* name) {
-    inode_t root;
-    read_inode(ROOT_INODE, &root);    
-    int inode_num = dir_lookup(&root, name);
-    if (inode_num < 0) {
-        return -1;
-    }
-    inode_t node;
-    read_inode(inode_num, &node);
-    for (int i = 0; i < INODE_DIRECT; i++) {
-        if (node.direct[i] != 0) {
-            free_block(node.direct[i]);
-            node.direct[i] = 0;
-        }
-    }
-    if (node.single_indirect != 0) {
-        free_indirect_tree(node.single_indirect, 1);
-        node.single_indirect = 0;
-    }
-    if (node.double_indirect != 0) {
-        free_indirect_tree(node.double_indirect, 2);
-        node.double_indirect = 0;
-    }
-    if (node.triple_indirect != 0) {
-        free_indirect_tree(node.triple_indirect, 3);
-        node.triple_indirect = 0;
-    }
-    free_inode(inode_num);
-    dir_remove(&root, name);
-
-    return 0;
 }
 
 static void zero_block(uint32_t lba) {
@@ -648,6 +563,80 @@ uint32_t get_physical_block(uint32_t inode_idx, inode_t* node, uint32_t logical_
     return 0;
 }
 
+int fs_write(uint32_t inode_idx, uint32_t offset, const uint8_t* data, size_t len) {
+    inode_t node;
+    read_inode(inode_idx, &node);
+    size_t written = 0;
+    uint8_t buf[SECTOR_SIZE];
+    while (written < len) {
+        uint32_t current_global_offset = offset + written;
+        uint32_t block_index = current_global_offset / SECTOR_SIZE;
+        uint32_t offset_in_block = current_global_offset % SECTOR_SIZE;
+        uint32_t phys_block = get_physical_block(inode_idx, &node, block_index, 1);
+        if (phys_block == 0) return -1; 
+        if (offset_in_block > 0 || (len - written) < SECTOR_SIZE) {
+            block_read(phys_block, buf);
+        }
+        size_t chunk_size = SECTOR_SIZE - offset_in_block;
+        if (chunk_size > (len - written)) chunk_size = len - written;
+        memcpy(buf + offset_in_block, data + written, chunk_size);
+        block_write(phys_block, buf);
+        written += chunk_size;
+    }
+    if (offset + written > node.size) {
+        node.size = (uint32_t)(offset + written);
+        write_inode(inode_idx, &node);
+    }
+    return (int)written;
+}
+
+void free_indirect_tree(uint32_t block_lba, int depth) {
+    if (block_lba == 0) return;
+    if (depth > 0) {
+        uint32_t ptrs[PTRS_PER_BLOCK];
+        block_read(block_lba, (uint8_t*)ptrs);
+        for (int i = 0; i < PTRS_PER_BLOCK; i++) {
+            if (ptrs[i] != 0) {
+                free_indirect_tree(ptrs[i], depth - 1);
+            }
+        }
+    }
+    free_block(block_lba);
+}
+
+int fs_delete_file(const char* name) {
+    inode_t root;
+    read_inode(ROOT_INODE, &root);    
+    int inode_num = dir_lookup(&root, name);
+    if (inode_num < 0) {
+        return -1;
+    }
+    inode_t node;
+    read_inode(inode_num, &node);
+    for (int i = 0; i < INODE_DIRECT; i++) {
+        if (node.direct[i] != 0) {
+            free_block(node.direct[i]);
+            node.direct[i] = 0;
+        }
+    }
+    if (node.single_indirect != 0) {
+        free_indirect_tree(node.single_indirect, 1);
+        node.single_indirect = 0;
+    }
+    if (node.double_indirect != 0) {
+        free_indirect_tree(node.double_indirect, 2);
+        node.double_indirect = 0;
+    }
+    if (node.triple_indirect != 0) {
+        free_indirect_tree(node.triple_indirect, 3);
+        node.triple_indirect = 0;
+    }
+    free_inode(inode_num);
+    dir_remove(&root, name);
+
+    return 0;
+}
+
 uint32_t fs_read(uint32_t inode_idx, inode_t* node, uint32_t offset, uint32_t size, uint8_t* buffer) {
     uint32_t bytes_read = 0;
     uint8_t sector_buf[512];
@@ -692,7 +681,46 @@ uint32_t fs_create_file(const char* name, const char* main_tag) {
     node.direct[0] = (uint32_t)b;
     write_inode(idx, &node);
     inode_t root;
-    read_inode(0, &root);
+    read_inode(g_current_dir, &root);
     dir_add(0, &root, name, (uint32_t)idx);
     return (uint32_t)idx;
+}
+
+int fs_create_dir(const char* name, uint32_t parent_inode_idx) {
+    int idx = alloc_inode();
+    if (idx < 0) return -1;
+    inode_t node;
+    memset(&node, 0, sizeof(node));
+    node.type = 2;
+    node.size = 0;
+    int b = alloc_block();
+    if (b == 0) { free_inode(idx); return -1; }
+    node.direct[0] = (uint32_t)b;
+    write_inode(idx, &node);
+    inode_t parent;
+    read_inode(parent_inode_idx, &parent);
+    dir_add(parent_inode_idx, &parent, name, (uint32_t)idx);
+    return idx;
+}
+
+int fs_resolve_path(const char* path, uint32_t current_dir_inode) {
+    inode_t dir;
+    read_inode(current_dir_inode, &dir);
+    return dir_lookup(&dir, path);
+}
+
+int fs_cd(const char* name) {
+    if (strcmp(name, "..") == 0) {
+        g_current_dir = 0;
+        return 0;
+    }
+    inode_t current;
+    read_inode(g_current_dir, &current);
+    int target_idx = dir_lookup(&current, name);
+    if (target_idx == -1) return -1;
+    inode_t target;
+    read_inode(target_idx, &target);
+    if (target.type != 2) return -2; 
+    g_current_dir = (uint32_t)target_idx;
+    return 0;
 }
