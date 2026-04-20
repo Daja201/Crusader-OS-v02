@@ -20,8 +20,7 @@ void timer_init(uint32_t frequency) {
     outb(0x40, (uint8_t)(divisor & 0xFF));
     outb(0x40, (uint8_t)((divisor >> 8) & 0xFF));
 }
-
-
+ 
 void system_main_task() {
     int last_sec = -1;
     for (;;) {
@@ -67,10 +66,11 @@ void kmain(unsigned long mb_magic, unsigned long mb_info) {
     klog("\n");
     klog_yellow("CRUSADER>> ");
     klog_status("BOOTED");
-    timer_init(100); 
+    timer_init(1000); 
     init_multitasking();
     create_task(system_main_task); 
     klog_status("MULTITASKING STARTED");
+    ac97_init();
     asm volatile("sti");
     while (1) {
         asm volatile("hlt");

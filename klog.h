@@ -19,4 +19,5 @@ void delete_note(const char* name);
 void cursor(char func);
 void gui();
 void delete_all_notes();
+//void klog_status(const char *status_str, char color_char);
 #endif
