@@ -135,6 +135,9 @@ void create_root() {
     if (b == 0) return;
     root.direct[0] = (uint32_t)b;
     write_inode(0, &root);
+    uint8_t zero_buf[SECTOR_SIZE];
+    memset(zero_buf, 0, SECTOR_SIZE);
+    block_write((uint32_t)b, zero_buf);
 }
 
 void read_inode(int idx, inode_t* inode) {
@@ -210,9 +213,16 @@ static uint32_t ata_get_total_sectors_dev(uint16_t base, uint8_t is_slave) {
 void format_fs() {
     klog_status("FORMATTING STARTED");
     select_drive(g_drives[g_current_drive].ata_base, g_drives[g_current_drive].is_slave);
+    g_current_dir = 0;
     g_superblock.magic = 0x5A4C534A;
     g_superblock.block_size = SECTOR_SIZE;
     g_superblock.total_blocks = g_drives[g_current_drive].total_sectors;
+    if (g_superblock.total_blocks > BLOCK_BITMAP_MAX_SIZE * 8) {
+        g_superblock.total_blocks = BLOCK_BITMAP_MAX_SIZE * 8;
+    }
+    if (g_superblock.total_blocks / 4 > INODE_BITMAP_SIZE * 8) {
+        g_superblock.total_blocks = (INODE_BITMAP_SIZE * 8) * 4;
+    }
     g_superblock.inode_count = g_superblock.total_blocks / 4;
     g_superblock.inode_count = (g_superblock.inode_count + 7) & ~7; 
     if (g_superblock.inode_count == 0) g_superblock.inode_count = 8;
@@ -244,9 +254,17 @@ void qformat_fs(void) {
     uint8_t zero_sector[SECTOR_SIZE];
     memset(zero_sector, 0, SECTOR_SIZE);
     klog_status("QUICK FORMATTING STARTED");
+    select_drive(g_drives[g_current_drive].ata_base, g_drives[g_current_drive].is_slave);
+    g_current_dir = 0;
     g_superblock.magic = 0x5A4C534A;
     g_superblock.block_size = SECTOR_SIZE;
     g_superblock.total_blocks = g_drives[g_current_drive].total_sectors;
+    if (g_superblock.total_blocks > BLOCK_BITMAP_MAX_SIZE * 8) {
+        g_superblock.total_blocks = BLOCK_BITMAP_MAX_SIZE * 8;
+    }
+    if (g_superblock.total_blocks / 4 > INODE_BITMAP_SIZE * 8) {
+        g_superblock.total_blocks = (INODE_BITMAP_SIZE * 8) * 4;
+    }
     g_superblock.inode_count = g_superblock.total_blocks / 4;
     g_superblock.inode_count = (g_superblock.inode_count + 7) & ~7; 
     if (g_superblock.inode_count == 0) g_superblock.inode_count = 8;
@@ -306,7 +324,7 @@ void drives() {
     }
 }
 
-create_defdirs() {
+void create_defdirs() {
     fs_create_dir("user", g_current_dir);
     fs_create_dir("data", g_current_dir);
     fs_create_dir("mount", g_current_dir);
@@ -314,7 +332,9 @@ create_defdirs() {
     fs_create_dir("cosfiles", g_current_dir);
     strcpy(g_current_path, ">");
     strcat(g_current_path, "user");
+    int result = fs_cd("user");
 }
+
 void init_fs() {
     if (g_active_drives > 4) g_active_drives = 0;
     if (g_active_drives == 0) return;
