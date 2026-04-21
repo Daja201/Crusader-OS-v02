@@ -8,11 +8,18 @@
 #include "klog.h"
 #include <string.h>
 #include <stdint.h>
+
 #define CHUNK_SIZE 65532
+#define CHUNK_SECTORS 256
+extern void select_drive(uint16_t base, uint8_t slave);
+extern void block_read(uint32_t lba, uint8_t* buf);
+static uint8_t raw_wav_buffer[CHUNK_SECTORS * 512] __attribute__((aligned(8)));
+
+
 
 extern uint32_t pci_config_read(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset);
 extern void pci_config_write(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint32_t value);
-static pci_device_t g_dev;
+pci_device_t g_dev;
 extern uint32_t g_current_dir;
 extern void read_inode(int idx, inode_t* inode);
 extern int fs_resolve_path(const char* path, uint32_t current_dir_inode);
@@ -53,6 +60,11 @@ int ac97_play_pcm(void* buffer, uint32_t length_bytes) {
     outw(nabm_port + 0x16, 0x1C);
     outb(nabm_port + 0x1B, 0x00);
     return 0;
+}
+
+int prep_play(void){
+    uint32_t cmd = pci_config_read(g_dev.bus, g_dev.device, g_dev.function, 0x04);
+    pci_config_write(g_dev.bus, g_dev.device, g_dev.function, 0x04, cmd | 0x05);
 }
 
 int ac97_play_test_tone(void) {
@@ -122,7 +134,7 @@ int play_wav_file(const char* filename) {
         ac97_play_pcm(streaming_buffer, to_read);
         played += to_read;
         offset += to_read;
-    }
+    } 
     kklog("WAV: Finished.\n");
     return 0;
 }

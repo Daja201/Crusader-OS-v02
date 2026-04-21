@@ -15,9 +15,13 @@
 #include "rtc.h"
 #include "vesa.h"
 #include "pmm.h"
+#include "pci.h"
 #include "app.h"
 #include "ac97.h"
 #include "speaker.h"
+#include "task.h"
+#define CHUNK_SIZE 65532
+//extern pci_device_t g_dev;
 extern fs_device_t g_drives[MAX_DRIVES];
 extern int g_current_drive;
 extern int g_active_drives;
@@ -27,6 +31,32 @@ extern void block_read(uint32_t lba, uint8_t* buf);
 extern int fs_change_drive(int drive_id);
 extern void init_fs(void);
 extern char g_current_path[];
+extern uint32_t pci_config_read(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset);
+extern void pci_config_write(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint32_t value);
+//extern pci_device_t g_dev;
+extern uint32_t g_current_dir;
+extern void read_inode(int idx, inode_t* inode);
+extern int fs_resolve_path(const char* path, uint32_t current_dir_inode);
+static uint8_t wav_audio_buffer[65536] __attribute__((aligned(8))); 
+extern int fs_resolve_path(const char* path, uint32_t current_dir_inode);
+static uint8_t streaming_buffer[CHUNK_SIZE] __attribute__((aligned(8)));
+
+struct ac97_bdl_entry {
+    uint32_t buffer_addr;
+    uint16_t length;
+    uint16_t flags;
+} __attribute__((packed));
+
+static struct ac97_bdl_entry bdl[1] __attribute__((aligned(8)));
+static int16_t audio_buffer[32000]; 
+
+
+extern void select_drive(uint16_t base, uint8_t slave);
+extern void block_read(uint32_t lba, uint8_t* buf);
+
+#define CHUNK_SECTORS 128 // Budeme číst 64 KB (128 sektorů * 512 B)
+static uint8_t raw_wav_buffer[CHUNK_SECTORS * 512] __attribute__((aligned(8)));
+
 
 void cmd_help(int argc, char** argv) {
     kklog_red("Welcome to Crusader OS made by David Zapletal");
@@ -495,6 +525,33 @@ void cmd_open(int argc, char** argv) {
     }
 }
 
+void cmd_playraw() {
+    prep_play();
+    select_drive(0x1F0, 1); 
+    block_read(0, raw_wav_buffer);
+    uint32_t* sig = (uint32_t*)raw_wav_buffer;
+    if (sig[0] != 0x46464952) { 
+        kklog("error wave not found");
+        select_drive(0x1F0, 0);
+        return;
+    }
+    kklog_green("Wave found\n");
+    uint32_t current_lba = 0;
+    for (int chunk = 0; chunk < 500; chunk++) {
+        for (int i = 0; i < CHUNK_SECTORS; i++) {
+            block_read(current_lba + i, raw_wav_buffer + (i * 512));
+        }
+        ac97_play_pcm(raw_wav_buffer, CHUNK_SECTORS * 512);
+        current_lba += CHUNK_SECTORS;
+    }
+    kklog("finished\n");
+    select_drive(0x1F0, 0); 
+}
+
+void playrawjmp() {
+    create_task(cmd_playraw);
+}
+
 command_t commands[] = {
     {"help", cmd_help},
     {"clear", cmd_clear},
@@ -522,6 +579,7 @@ command_t commands[] = {
     {"mf", cmd_mf},
     {"cd", cmd_cd},
     {"open", cmd_open},
+    {"play1", playrawjmp},
 };
 
 int command_count = sizeof(commands)/sizeof(command_t);

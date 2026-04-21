@@ -25,7 +25,7 @@ section .multiboot
     dd 0 
     
 ; Video mode setup
-    dd 0    ; 0 = Lineární grafický režim (ZDE BYLA CHYBA!)
+    dd 0    
     dd 1280  ; Width
     dd 720  ; Height
     dd 32   ; Depth
