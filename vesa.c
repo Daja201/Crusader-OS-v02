@@ -77,7 +77,7 @@ void vesa_putpixel(int x, int y, uint32_t color) {
 void vesa_clear(uint32_t color) { 
     if (!vesa_ready) return;
     for (uint32_t y = 0; y < fb_height; y++) {
-        for (uint32_t x = 0; x < 960; x++) {
+        for (uint32_t x = 0; x < fb_w_34; x++) {
             vesa_putpixel(x, y, color);
         }
     }
