@@ -77,7 +77,7 @@ run:
 		-drive file=disk.img,format=raw,bus=0,unit=0,media=disk \
 		-drive file=music.wav,format=raw,bus=0,unit=1,media=disk \
 		-audiodev pa,id=snd0 -device ac97,audiodev=snd0 \
-		-m 512M -vga std -serial stdio -enable-kvm
+		-m 4G -vga std -serial stdio -enable-kvm
 dd_second:
 	dd if=/dev/zero of=disk2.img bs=1M count=64 status=progress
 dd32:
