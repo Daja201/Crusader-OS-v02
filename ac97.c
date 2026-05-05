@@ -15,8 +15,6 @@ extern void select_drive(uint16_t base, uint8_t slave);
 extern void block_read(uint32_t lba, uint8_t* buf);
 static uint8_t raw_wav_buffer[CHUNK_SECTORS * 512] __attribute__((aligned(8)));
 
-
-
 extern uint32_t pci_config_read(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset);
 extern void pci_config_write(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint32_t value);
 pci_device_t g_dev;

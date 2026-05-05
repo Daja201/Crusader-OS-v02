@@ -20,6 +20,7 @@
 #include "ac97.h"
 #include "speaker.h"
 #include "task.h"
+#include "templar.h"
 #define CHUNK_SIZE 65532
 //extern pci_device_t g_dev;
 extern fs_device_t g_drives[MAX_DRIVES];
@@ -518,8 +519,11 @@ void cmd_open(int argc, char** argv) {
         cmd_read(argc, argv);
     } 
     else if (strcmp(ext, ".cos") == 0) {
-        //IMPLEMENT BINARY
-    } 
+    TplState *s = pmm_alloc_block();   // grab a 4KB block for state
+    templar_init(s);
+    templar_load_file(s, filename);
+    pmm_free_block(s);
+    }
     else {
         kklog("Error: Unsupported file type.\n");
     }
@@ -575,10 +579,10 @@ command_t commands[] = {
     {"shutdown", cmd_shutdown},
     {"app", cmd_app},
     {"open", cmd_open},
-    {"open", cmd_open},
+    //{"open", cmd_open},
     {"mf", cmd_mf},
     {"cd", cmd_cd},
-    {"open", cmd_open},
+    //{"open", cmd_open},
     {"play1", playrawjmp},
 };
 
