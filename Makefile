@@ -11,8 +11,8 @@ LD_FLAGS = -m elf_i386 -T link.ld
 
 # files
 ASM = loader.s
-C_SRC = kernel.c vesa.c bootinfo.c klog.c ac97.c bioskbd.c terminal.c commands.c string.c reboot.c fs.c diskinfo.c  library.c libdiv.c rtc.c font.c pmm.c paging.c idt.c task.c app.c pci.c speaker.c
-OBJ = loader.o kernel.o vesa.o bootinfo.o klog.o ac97.o bioskbd.o terminal.o commands.o string.o reboot.o fs.o diskinfo.o  library.o libdiv.o rtc.o font.o pmm.o paging.o idt.o interrupts.o task.o app.o pci.o speaker.o
+C_SRC = kernel.c vesa.c bootinfo.c klog.c ac97.c bioskbd.c terminal.c commands.c string.c reboot.c fs.c diskinfo.c  library.c libdiv.c rtc.c font.c pmm.c paging.c idt.c task.c app.c pci.c speaker.c templar.c
+OBJ = loader.o kernel.o vesa.o bootinfo.o klog.o ac97.o bioskbd.o terminal.o commands.o string.o reboot.o fs.o diskinfo.o  library.o libdiv.o rtc.o font.o pmm.o paging.o idt.o interrupts.o task.o app.o pci.o speaker.o templar.o
 ISO_DIR = iso
 GRUB_DIR = $(ISO_DIR)/boot/grub
 ISO = os.iso
@@ -41,6 +41,8 @@ paging.o: paging.c
 	$(CC) $(CFLAGS) paging.c -o paging.o
 commands.o: commands.c commands.h
 	$(CC) $(CFLAGS) commands.c -o commands.o
+templar.o: templar.c templar.h
+	$(CC) $(CFLAGS) templar.c -o templar.o
 kernel.elf: $(OBJ)
 	$(LD) $(LD_FLAGS) $(OBJ) -o $(KERNEL)
 
